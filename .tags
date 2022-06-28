@@ -1,0 +1,11 @@
+compilerOptions	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^  "compilerOptions": {$/;"	function	line:2
+target	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "target": "es2018",$/;"	function	line:3
+module	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "module": "commonjs",$/;"	function	line:4
+strict	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "strict": true,$/;"	function	line:5
+esModuleInterop	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "esModuleInterop": true,$/;"	function	line:6
+outDir	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "outDir": "dist",$/;"	function	line:7
+declaration	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "declaration": true,$/;"	function	line:8
+resolveJsonModule	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "resolveJsonModule": true,$/;"	function	line:9
+esModuleInterop	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^    "esModuleInterop": true,$/;"	function	line:10
+include	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^  "include": [".\/scripts", ".\/test", ".\/typechain"],$/;"	function	line:12
+files	/Users/dipoareoye/Projects/lendnft/tsconfig.json	/^  "files": [".\/hardhat.config.ts"]$/;"	function	line:13
