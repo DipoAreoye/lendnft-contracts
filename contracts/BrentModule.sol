@@ -15,16 +15,6 @@ contract BrentModule {
 
     constructor(address _target, address _tokenAddress, address _lenderAddress, address _borrowersAddress, uint256 _tokenId) {
       bytes memory initializeParams = abi.encode(_tokenAddress, _tokenId, _lenderAddress);
-      setUp(initializeParams);
-
-      tokenAddress = _tokenAddress;
-      lenderAddress = _lenderAddress;
-      tokenId = _tokenId;
-      safeAddress = payable(_target);
-    }
-
-    function setUp(bytes memory initializeParams) public virtual {
-      (address _target, address _tokenAddress, address _lenderAddress, address _borrowersAddress, uint256 _tokenId) = abi.decode(initializeParams, (address, address, address, address, uint256));
 
       tokenAddress = _tokenAddress;
       lenderAddress = _lenderAddress;
