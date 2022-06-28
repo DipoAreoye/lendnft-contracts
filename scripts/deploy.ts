@@ -9,7 +9,7 @@ const nftContractABI = abi
 const safeAddress = "0xDa48e23Aa2858C5CCE0a689AE70775929A55FF75";
 const borrowerAddress = "0x192BFe541752a1a77CD380feB2e5Aa9d9c4e1109";
 const lenderAddress = "0xFf1df8f17aC935087592120A0E2C7c45f1CeE483";
-const moduleAddress = "0xD4eD49d180033250Ead1Afd418D6F2dCbEe4B7be"
+const moduleAddress = "0x7EEFd69A4c007696385ef15A488E39fDd842D9e3"
 const guardAddress = "0xAB5741ae25efD7417796b0a8fbEfDF2575531CDf";
 const tokenAddress = "0xf1761434049015206D1C09f76E663b7f565753cB";
 
@@ -83,6 +83,24 @@ async function addModuleToSafe() {
   console.log("module added:", tx)
 }
 
+async function checkModuleIsAdded() {
+  const provider = getDefaultProvider(process.env.RINKEBY_URL);
+  const signer = new Wallet (
+    process.env.PRIVATE_KEY || '',
+    provider
+  )
+
+  const ethAdapter = new EthersAdapter({
+    ethers,
+    signer
+  })
+
+  const safeSdk: Safe = await Safe.create({ ethAdapter: ethAdapter, safeAddress })
+  const isEnabled = await safeSdk.isModuleEnabled(moduleAddress)
+
+  console.log("module added:", isEnabled)
+}
+
 
 async function sendNFTsToSafe(tokenAddress: string, tokenId: number) {
   const provider = getDefaultProvider(process.env.RINKEBY_URL);
@@ -97,7 +115,7 @@ async function sendNFTsToSafe(tokenAddress: string, tokenId: number) {
     signer
   );
 
-  const tx = await nft.safeTransferFrom(lenderAddress, safeAddress, tokenId)
+  const tx = await nft["safeTransferFrom(address,address,uint256)"](lenderAddress, safeAddress, tokenId)
   tx.wait()
 
   console.log("tranfer tx;", tx)
@@ -112,17 +130,22 @@ async function sendNFTsToSafe(tokenAddress: string, tokenId: number) {
 //   process.exitCode = 1;
 // });
 
-deployModuleContract().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+// deployModuleContract().catch((error) => {
+//   console.error(error);
+//   process.exitCode = 1;
+// });
 
 // addModuleToSafe().catch((error) => {
 //   console.error(error);
 //   process.exitCode = 1;
 // });
 //
-// sendNFTsToSafe(tokenAddress, safeAddress).catch((error) => {
+// checkModuleIsAdded().catch((error) => {
 //   console.error(error);
 //   process.exitCode = 1;
 // });
+//
+sendNFTsToSafe(tokenAddress, 12).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -14,8 +14,6 @@ contract BrentModule {
     address lenderAddress;
 
     constructor(address _target, address _tokenAddress, address _lenderAddress, address _borrowersAddress, uint256 _tokenId) {
-      bytes memory initializeParams = abi.encode(_tokenAddress, _tokenId, _lenderAddress);
-
       tokenAddress = _tokenAddress;
       lenderAddress = _lenderAddress;
       tokenId = _tokenId;
@@ -26,7 +24,7 @@ contract BrentModule {
         require(msg.sender == lenderAddress);
 
         success = GnosisSafe(safeAddress).execTransactionFromModule(
-            lenderAddress,
+            tokenAddress,
             0,
             abi.encodePacked(bytes4(keccak256("safeTransferFrom(address,address,uint256)")), safeAddress,lenderAddress,tokenId),
             Enum.Operation.Call
