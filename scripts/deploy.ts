@@ -55,7 +55,6 @@ async function deployModuleContract() {
     safeAddress,
     tokenAddress,
     lenderAddress,
-    borrowerAddress,
     12);
 
   await module.deployed();

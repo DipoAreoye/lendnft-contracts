@@ -7,6 +7,13 @@ const deploy: DeployFunction = async (hre: HardhatRuntimeEnvironment): Promise<v
   const { deployer } = await getNamedAccounts()
   const { deploy } = deployments
 
+  await deploy("Artwork", {
+    from: deployer,
+    args: ["NFTNYC", "NYC"],
+    log: true,
+    deterministicDeployment: true
+  })
+
   await deploy("GnosisSafe_SV1_3_0", {
     from: deployer,
     args: [],

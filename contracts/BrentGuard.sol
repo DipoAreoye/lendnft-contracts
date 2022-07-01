@@ -5,12 +5,15 @@ import "hardhat/console.sol";
 import "@gnosis.pm/safe-contracts/contracts/base/GuardManager.sol";
 
 contract BrentGuard is Guard {
-    string private tokenAddress;
-    string private lenderAddress;
+    address private tokenAddress;
+    address private lenderAddress;
+    uint256 private tokenId;
 
-    constructor(string memory _tokenAddress, string memory _lenderAddress) {
+
+    constructor(address _tokenAddress, address _lenderAddress, uint256 _tokenId) {
         tokenAddress = _tokenAddress;
         lenderAddress = _lenderAddress;
+        tokenId = _tokenId;
     }
 
     function checkTransaction(
@@ -31,4 +34,13 @@ contract BrentGuard is Guard {
   }
 
   function checkAfterExecution(bytes32, bool) external view override {}
+
+  function transferFrom(address from, address to, uint256 _tokenId) public returns (bool success) {
+    if (to == lenderAddress && _tokenId ==tokenId) {
+        console.log("this shit worked", msg.sender);
+        return true;
+    }
+
+    return false;
+  }
 }
