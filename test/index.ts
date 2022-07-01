@@ -1,43 +1,109 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { deployments, ethers, waffle } from "hardhat";
+import { BigNumber } from "@ethersproject/bignumber";
 import EthersAdapter from '@gnosis.pm/safe-ethers-lib'
+import { Wallet } from '@ethersproject/wallet'
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk'
 import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk';
 
-
 describe("Deploy Safe", function () {
-  it("Deploy Safe", async function () {
+  let lender : Wallet;
+  let borrower: Wallet;
+  let tokenAddress = "0x1aAD0be6EaB3EDbDd05c05601037CC4FCd9bB944";
+  let moduleAddress: string;
+  let safeAddress: string;
+  let tokenId: BigNumber;
 
-    const provider = ethers.provider;
-    const safeOwner = provider.getSigner(0);
+  before("Deploy Safe, Module & Mint NFT to lender address",async function() {
 
-    console.log("safeOwner", safeOwner._address);
+    //Deploy safe SDK dependency contracts
+    await deployments.fixture();
 
+    const [user1, user2] = waffle.provider.getWallets();
+    lender = user1
+
+    //Mint NFT from contract
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    tokenAddress = boredApeContract.address;
+
+    const apePrice = await boredApeContract.apePrice();
+    tokenId = await boredApeContract.totalSupply();
+
+    expect(
+      await boredApeContract.mintApe(1, {
+        value: apePrice,
+      })
+    )
+    .to.emit(boredApeContract, "Transfer")
+    .withArgs(ethers.constants.AddressZero, user1, tokenId);
+
+    //Deploy Safe
     const ethAdapter = new EthersAdapter({
       ethers,
-      signer: safeOwner
+      signer: lender
     })
 
-    const safeFactory = await SafeFactory.create({ethAdapter})
+    const chainId = await ethAdapter.getChainId()
+    const contractNetworks: ContractNetworksConfig = {
+      [chainId]: {
+        multiSendAddress: '0x67e11fA659C73636214507Cf3d9DFC0a879561C9',
+        safeMasterCopyAddress: '0x67e11fA659C73636214507Cf3d9DFC0a879561C9',
+        safeProxyFactoryAddress: '0x7178aA4031d6c90f944fb536dB64dC97B8aa2D69'
+      }
+    }
 
-    const accounts = await ethers.getSigners();
-    const lender = accounts[0].address;
-    const borrower = accounts[1].address;
+    const safeFactory = await SafeFactory.create({ethAdapter, contractNetworks})
 
-    const owners = [lender, borrower];
-    const threshold = 2
+    const owners = [lender.address];
+    const threshold = 1
     const safeAccountConfig: SafeAccountConfig = {
       owners,
       threshold,
-      fallbackHandler : "0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4",
     }
 
-    console.log("deploying safe");
-
     const safeSdk: Safe = await safeFactory.deploySafe({ safeAccountConfig })
-    const safeAddress = safeSdk.getAddress();
+    safeAddress = safeSdk.getAddress();
 
-    console.log("safe deployed:", safeAddress);
+    //Deploy Module
+    const BrentModule = await ethers.getContractFactory("BrentModule");
+    const module = await BrentModule.deploy(
+      safeAddress,
+      tokenAddress,
+      lender.address,
+      12);
 
-    expect(safeAddress.leng th).to.greaterThan(0);
+    await module.deployed();
+    moduleAddress = module.address;
+
+    const safeTransaction = await safeSdk.getEnableModuleTx(moduleAddress)
+    await safeSdk.executeTransaction(safeTransaction)
+    expect(await safeSdk.isModuleEnabled(moduleAddress)).to.equal(true)
+  })
+
+  it("Transfer NFT to safe", async function () {
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    expect(
+      await boredApeContract.transferFrom(lender.address,safeAddress,tokenId)
+    )
+    .to.emit(boredApeContract, "Transfer")
+    .withArgs(lender, safeAddress, tokenId);
+  });
+
+  it("retrieve NFT from safe", async function () {
+    const BrentModule = await ethers.getContractFactory("BrentModule");
+    const module = BrentModule.attach(moduleAddress);
+
+    const tx = await module.returnNFT()
+    tx.wait();
+
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    const balance = await boredApeContract.balanceOf(safeAddress)
+    console.log("balance", balance)
   });
 });
