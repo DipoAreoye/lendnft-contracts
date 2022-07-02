@@ -15,7 +15,7 @@ describe("Deploy Safe", function () {
   let safeAddress: string;
   let tokenId: BigNumber;
 
-  before("Deploy Safe, Module & Mint NFT to lender address",async function() {
+  before("Deploy Safe, Module & Mint NFT to lender address", async function() {
 
     //Deploy safe SDK dependency contracts
     await deployments.fixture();
@@ -111,7 +111,7 @@ describe("Deploy Safe", function () {
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = BrentModule.attach(moduleAddress);
 
-    const tx = await module.returnNFT();
+    await module.returnNFT();
 
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
