@@ -4,7 +4,7 @@ import { BigNumber } from "ethers";
 import EthersAdapter from '@gnosis.pm/safe-ethers-lib'
 import { Wallet } from '@ethersproject/wallet'
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk'
-import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk';
+import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
 
 describe("Deploy Safe", function () {
   let lender : Wallet;
@@ -30,16 +30,15 @@ describe("Deploy Safe", function () {
 
     tokenAddress = boredApeContract.address;
 
-
     const apePrice = await boredApeContract.apePrice();
     tokenId = await boredApeContract.totalSupply();
-    const tx = await boredApeContract.mintApe(2, { value: apePrice.mul(2)})
+    const tx = await boredApeContract.mintApe(1, { value: apePrice })
 
     let receipt = await tx.wait();
     const transferEvent = receipt.events?.filter((x) => {return x.event == "Transfer"})
 
     if (transferEvent != null) {
-      tokenId = BigNumber.from(transferEvent[1].topics[3])
+      tokenId = BigNumber.from(transferEvent[0].topics[3])
     }
 
     //Deploy Safe
@@ -83,7 +82,7 @@ describe("Deploy Safe", function () {
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = await BrentModule.deploy(
       safeAddress,
-      guardAddress,
+      tokenAddress,
       lender.address,
       tokenId);
 
@@ -99,19 +98,24 @@ describe("Deploy Safe", function () {
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
 
-    const tx = await boredApeContract.transferFrom(lender.address,safeAddress,tokenId)
+    const balanceBefore = await boredApeContract.balanceOf(safeAddress)
+    expect(balanceBefore).to.equal(BigNumber.from(0))
+
+    await boredApeContract.transferFrom(lender.address,safeAddress,tokenId)
+
+    const balanceAfter = await boredApeContract.balanceOf(safeAddress)
+    expect(balanceAfter).to.equal(BigNumber.from(1))
   });
 
-  it("retrieve NFT from safe", async function () {
-    console.log("lender", lender.address)
-    console.log("safe", safeAddress)
-    console.log("token", tokenId)
-
+  it("Retrieve NFT from safe", async function () {
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = BrentModule.attach(moduleAddress);
 
-    const sucess = await module.returnNFT();
-    console.log(sucess)
-    expect(await module.returnNFT()).to.equal(true)
-  });
+    const tx = await module.returnNFT();
+
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    const balance = await boredApeContract.balanceOf(lender.address)
+    expect(balance).to.equal(BigNumber.from(1))});
 });

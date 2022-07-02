@@ -26,10 +26,12 @@ contract BrentModule {
           "Sender not authorized."
         );
 
+        bytes memory data = abi.encodeWithSignature("transferFrom(address,adress,uint256)",safeAddress,lenderAddress,tokenId);
+
         success = GnosisSafe(safeAddress).execTransactionFromModule(
             tokenAddress,
             0,
-            abi.encodeWithSignature("transferFrom(address,address,uint256)", safeAddress,lenderAddress,tokenId),
+            data,
             Enum.Operation.Call
         );
 
