@@ -7,13 +7,11 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract BrentModule {
     address payable private safeAddress;
-
-    address private tokenAddress;
-
-    uint256 private tokenId;
     address lenderAddress;
+    address private tokenAddress;
+    uint256 private tokenId;
 
-    constructor(address _target, address _tokenAddress, address _lenderAddress, uint256 _tokenId) {
+    constructor(address _target, address _tokenAddress, address _lenderAddress, uint256 _tokenId) {  
       tokenAddress = _tokenAddress;
       lenderAddress = _lenderAddress;
       tokenId = _tokenId;
@@ -27,12 +25,13 @@ contract BrentModule {
     }
 
     function exectuteTransfer() private {
-      bytes memory data = abi.encodeWithSignature("transferFrom(address,adress,uint256)",safeAddress,lenderAddress,tokenId);
+      bytes memory data = abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",safeAddress,lenderAddress,tokenId);
 
-        GnosisSafe(safeAddress).execTransactionFromModule(
-          tokenAddress,
-          0,
-          data,
-          Enum.Operation.Call);
+      GnosisSafe(safeAddress).execTransactionFromModule(
+        tokenAddress,
+        0,
+        data,
+        Enum.Operation.Call
+      );
     }
   }

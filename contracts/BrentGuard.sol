@@ -30,17 +30,8 @@ contract BrentGuard is Guard {
       bytes memory,
       address
   ) external view override {
-      require(false);
+    require(to != tokenAddress, 'Attempting to transact on NFT');
   }
 
   function checkAfterExecution(bytes32, bool) external view override {}
-
-  function transferFrom(address from, address to, uint256 _tokenId) public returns (bool success) {
-    if (to == lenderAddress && _tokenId ==tokenId) {
-        console.log("this shit worked", msg.sender);
-        return true;
-    }
-
-    return false;
-  }
 }

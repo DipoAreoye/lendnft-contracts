@@ -1,12 +1,18 @@
 import { expect } from "chai";
 import { deployments, ethers, waffle } from "hardhat";
+
 import { BigNumber } from "ethers";
 import EthersAdapter from '@gnosis.pm/safe-ethers-lib'
 import { Wallet } from '@ethersproject/wallet'
+import guardABI from '../abi/GuardManager.json'
+import nftContractABI from '../abi/ERC721.json'
+
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk'
 import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
+import { SafeTransactionDataPartial } from '@gnosis.pm/safe-core-sdk-types'
 
 describe("Deploy Safe", function () {
+  let safeSdk: Safe;
   let lender : Wallet;
   let borrower: Wallet;
   let tokenAddress = "0x1aAD0be6EaB3EDbDd05c05601037CC4FCd9bB944";
@@ -65,7 +71,7 @@ describe("Deploy Safe", function () {
       threshold,
     }
 
-    const safeSdk: Safe = await safeFactory.deploySafe({ safeAccountConfig })
+    safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
     safeAddress = safeSdk.getAddress();
 
     //Deploy Guard
@@ -78,12 +84,27 @@ describe("Deploy Safe", function () {
     await guard.deployed();
     guardAddress = guard.address;
 
+    const GuardManager = await ethers.getContractFactory("GuardManager");
+    const guardManager = GuardManager.attach(safeAddress);
+
+    const interace = new ethers.utils.Interface(guardABI);
+    const data = interace.encodeFunctionData("setGuard", [guardAddress]);
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeAddress,
+      value: '0',
+      data
+    }
+
+    const addGuardTx = await safeSdk.createTransaction(transaction)
+    await safeSdk.executeTransaction(addGuardTx)
+
     //Deploy Module
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = await BrentModule.deploy(
       safeAddress,
       tokenAddress,
-      lender.address,
+      borrower.address,
       tokenId);
 
     await module.deployed();
@@ -102,10 +123,25 @@ describe("Deploy Safe", function () {
     const balanceBefore = await boredApeContract.balanceOf(safeAddress)
     expect(balanceBefore).to.equal(BigNumber.from(0))
 
-    await boredApeContract.transferFrom(lender.address,safeAddress,tokenId)
+    const tx = await boredApeContract.transferFrom(lender.address,safeAddress,tokenId)
 
     const balanceAfter = await boredApeContract.balanceOf(safeAddress)
     expect(balanceAfter).to.equal(BigNumber.from(1))
+  });
+
+  it("Ensure guard protects NFT", async function () {
+    const interace = new ethers.utils.Interface(nftContractABI);
+    const data = interace.encodeFunctionData("transferFrom", [safeAddress, lender.address, tokenId]);
+
+    const transaction: SafeTransactionDataPartial = {
+      to: tokenAddress,
+      value: '0',
+      data
+    }
+
+    const addGuardTx = await safeSdk.createTransaction(transaction)
+
+    await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted
   });
 
   it("Retrieve NFT from safe", async function () {
@@ -115,9 +151,12 @@ describe("Deploy Safe", function () {
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
 
-    await module.returnNFT();
-    expect('transferFrom').to.be.calledOnContractWith(boredApeContract, [lender.address]);
+    const balanceBefore = await boredApeContract.balanceOf(borrower.address)
+    expect(balanceBefore).to.equal(BigNumber.from(0))
 
-    const balance = await boredApeContract.balanceOf(lender.address)
-    expect(balance).to.equal(BigNumber.from(1))});
+    await module.connect(borrower).returnNFT();
+
+    const balance = await boredApeContract.balanceOf(borrower.address)
+    expect(balance).to.equal(BigNumber.from(1))
+  });
 });
