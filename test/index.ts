@@ -74,31 +74,6 @@ describe("Deploy Safe", function () {
     safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
     safeAddress = safeSdk.getAddress();
 
-    //Deploy Guard
-    const BrentGuard = await ethers.getContractFactory("BrentGuard");
-    const guard = await BrentGuard.deploy(
-      tokenAddress,
-      lender.address,
-      tokenId);
-
-    await guard.deployed();
-    guardAddress = guard.address;
-
-    const GuardManager = await ethers.getContractFactory("GuardManager");
-    const guardManager = GuardManager.attach(safeAddress);
-
-    const interace = new ethers.utils.Interface(guardABI);
-    const data = interace.encodeFunctionData("setGuard", [guardAddress]);
-
-    const transaction: SafeTransactionDataPartial = {
-      to: safeAddress,
-      value: '0',
-      data
-    }
-
-    const addGuardTx = await safeSdk.createTransaction(transaction)
-    await safeSdk.executeTransaction(addGuardTx)
-
     //Deploy Module
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = await BrentModule.deploy(
@@ -114,6 +89,31 @@ describe("Deploy Safe", function () {
     const safeTransaction = await safeSdk.getEnableModuleTx(moduleAddress)
     await safeSdk.executeTransaction(safeTransaction)
     expect(await safeSdk.isModuleEnabled(moduleAddress)).to.equal(true)
+
+    //Deploy Guard
+    const BrentGuard = await ethers.getContractFactory("BrentGuard");
+    const guard = await BrentGuard.deploy(
+      tokenAddress,
+      lender.address,
+      tokenId);
+
+    await guard.deployed();
+    guardAddress = guard.address;
+
+    const GuardManager = await ethers.getContractFactory("GuardManager");
+    const guardManager = GuardManager.attach(safeAddress);
+
+    const guardInterface = new ethers.utils.Interface(guardABI);
+    const data = guardInterface.encodeFunctionData("setGuard", [guardAddress]);
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeAddress,
+      value: '0',
+      data
+    }
+
+    const addGuardTx = await safeSdk.createTransaction(transaction)
+    await safeSdk.executeTransaction(addGuardTx)
   })
 
   it("Transfer NFT to safe", async function () {
@@ -144,6 +144,41 @@ describe("Deploy Safe", function () {
     await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted
   });
 
+  it("Ensure guard protects removing guard", async function () {
+    const guardInterface = new ethers.utils.Interface(guardABI);
+    const data = guardInterface.encodeFunctionData("setGuard", [ethers.constants.AddressZero]);
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeAddress,
+      value: '0',
+      data
+    };
+
+    const addGuardTx = await safeSdk.createTransaction(transaction);
+    await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted;
+  });
+
+  it("Ensure guard protects adding module", async function () {
+    //Deploy Module
+    const BrentModule = await ethers.getContractFactory("BrentModule");
+    const module2 = await BrentModule.deploy(
+      safeAddress,
+      tokenAddress,
+      borrower.address,
+      tokenId);
+
+    await module2.deployed();
+    const module2Address = module2.address;
+
+    const safeTransaction = await safeSdk.getEnableModuleTx(module2Address);
+    await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
+  });
+
+  it("Ensure guard protects removing module", async function () {
+    const safeTransaction = await safeSdk.getDisableModuleTx(moduleAddress)
+    await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
+  });
+
   it("Retrieve NFT from safe", async function () {
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = BrentModule.attach(moduleAddress);
@@ -159,4 +194,6 @@ describe("Deploy Safe", function () {
     const balance = await boredApeContract.balanceOf(borrower.address)
     expect(balance).to.equal(BigNumber.from(1))
   });
+
+
 });
