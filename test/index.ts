@@ -89,6 +89,7 @@ describe("Deploy Safe", function () {
     await module.deployed();
     moduleAddress = module.address;
 
+    // Add Module to safe and confirm
     const safeTransaction = await safeSdk.getEnableModuleTx(moduleAddress)
     await safeSdk.executeTransaction(safeTransaction)
     expect(await safeSdk.isModuleEnabled(moduleAddress)).to.equal(true)
@@ -111,10 +112,11 @@ describe("Deploy Safe", function () {
     const BrentModule = await ethers.getContractFactory("BrentModule");
     const module = BrentModule.attach(moduleAddress);
 
-    await module.returnNFT();
-
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
+
+    await module.returnNFT();
+    expect('transferFrom').to.be.calledOnContractWith(boredApeContract, [lender.address]);
 
     const balance = await boredApeContract.balanceOf(lender.address)
     expect(balance).to.equal(BigNumber.from(1))});
