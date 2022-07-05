@@ -39,7 +39,7 @@ contract BrentGuard is Guard {
     bytes memory selector = new bytes(32);
 
     for (uint8 i = 28; i <= 31; i++) {
-     selector[i] = data[i-28];
+     selector[i] = data[i - 28];
     }
 
     require(!restrictedFunctions[keccak256(selector)] , 'Attempted guarded transaction');
