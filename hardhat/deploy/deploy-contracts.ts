@@ -27,16 +27,6 @@ const deploy: DeployFunction = async (hre: HardhatRuntimeEnvironment): Promise<v
     log: true,
     deterministicDeployment: true
   })
-  //
-  // console.log('Deploy 0')
-  //
-  // await deploy("BrentModule", {
-  //   from: deployer,
-  //   args: ["0xFf1df8f17aC935087592120A0E2C7c45f1CeE483", "0xFf1df8f17aC935087592120A0E2C7c45f1CeE483", "0xFf1df8f17aC935087592120A0E2C7c45f1CeE483", "115"],
-  //   log: true,
-  //   deterministicDeployment: true
-  // })
-
 }
 
 export default deploy
