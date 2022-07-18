@@ -12,7 +12,6 @@ import Web3Adapter from '@gnosis.pm/safe-web3-lib'
 import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
 import { SafeTransactionDataPartial } from '@gnosis.pm/safe-core-sdk-types'
 
-
 const settings = {
   apiKey: '2gV_Wy-XGkOgONR2q7eJr83iPR23pAsC',
   network: Network.ETH_RINKEBY,
@@ -20,18 +19,13 @@ const settings = {
 };
 
 const web3 = createAlchemyWeb3("https://eth-mainnet.alchemyapi.io/2gV_Wy-XGkOgONR2q7eJr83iPR23pAsC");
-const safeOwner = '0x<address>'
 let alchemy : Alchemy;
-
-const brentContractAddress = ""
 
 function init() {
   alchemy = initializeAlchemy(settings);
 }
 
-async function acceptLend(value: BigNumber, tokenId: BigNumber,
-  tokenAddress: string, tokenOwner: string, borrowerAddress: string) {
-
+async function createSafe(borrowerAddress: string) : Promise<string> {
   const ethAdapter = new Web3Adapter({
     web3,
     signerAddress: borrowerAddress
@@ -47,7 +41,12 @@ async function acceptLend(value: BigNumber, tokenId: BigNumber,
   }
 
   const safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
-  const safeAddress = safeSdk.getAddress();
+  return Promise.resolve(safeSdk.getAddress())
+}
 
-  const contract = new web3.eth.Contract(moduleABI.abi);
+async function acceptLend(value: BigNumber, tokenId: BigNumber,
+  tokenAddress: string, tokenOwner: string, borrowerAddress: string) {
+}
+
+async function retrieveNFT(tokenId: BigNumber) {
 }
