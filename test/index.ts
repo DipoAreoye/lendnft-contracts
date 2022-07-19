@@ -49,7 +49,7 @@ describe("Deploy Safe", function () {
 
     const apePrice = await boredApeContract.apePrice();
     tokenId = await boredApeContract.totalSupply();
-    const tx = await boredApeContract.mintApe(1, { value: apePrice })
+    const tx = await boredApeContract.connect(lender).mintApe(1, { value: apePrice })
 
     let receipt = await tx.wait();
     const transferEvent = receipt.events?.filter((x) => {return x.event == "Transfer"})
@@ -67,9 +67,9 @@ describe("Deploy Safe", function () {
     const chainId = await ethAdapter.getChainId()
     const contractNetworks: ContractNetworksConfig = {
       [chainId]: {
-        multiSendAddress: '0x5086217BC0625F133744DF19E6eED57A0CC9FEDc',
-        safeMasterCopyAddress: '0xDE1B6D1629F24cc20a5032370dA3be14886404C9',
-        safeProxyFactoryAddress: '0xDEB08BEFc867F95C80c9B85aaf492787b91c6dc3'
+        multiSendAddress: '0x34650C475Ac99A2aFd4fA7d5F801364f3eCC94DA',
+        safeMasterCopyAddress: '0x2c383D56322fDeaa1301070cd4F8E68F0cd91180',
+        safeProxyFactoryAddress: '0x3831318eF298172Cc7Aef3D816D158d46EB6963B'
       }
     }
 
@@ -84,8 +84,6 @@ describe("Deploy Safe", function () {
 
     safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
     safeAddress = safeSdk.getAddress();
-
-
 
     // Deploy Module
     // const BrentModule = await ethers.getContractFactory("BrentModule");
@@ -103,7 +101,7 @@ describe("Deploy Safe", function () {
     //
     // await safeSdk.executeTransaction(safeTransaction)
 
-    // //Deploy Guard
+    //Deploy Guard
     // const BrentGuard = await ethers.getContractFactory("BrentGuard");
     // const guard = await BrentGuard.deploy(
     //   tokenAddress,
@@ -113,10 +111,7 @@ describe("Deploy Safe", function () {
     //
     // await guard.deployed();
     // guardAddress = guard.address;
-    //
-    // const GuardManager = await ethers.getContractFactory("GuardManager");
-    // const guardManager = GuardManager.attach(safeAddress);
-    //
+
     // const guardInterface = new ethers.utils.Interface(guardABI);
     // const data = guardInterface.encodeFunctionData("setGuard", [guardAddress]);
     //
@@ -158,85 +153,85 @@ describe("Deploy Safe", function () {
 
     expect(await safeSdk.isModuleEnabled(safeManagerAddress)).to.equal(true)
   });
-  //
-  // it("Transfer NFT to safe", async function () {
-  //   const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
-  //   const boredApeContract = MyContract.attach(tokenAddress);
-  //
-  //   const balanceBefore = await boredApeContract.balanceOf(safeAddress)
-  //   expect(balanceBefore).to.equal(BigNumber.from(0))
-  //
-  //   const tx = await boredApeContract.transferFrom(lender.address,safeAddress,tokenId)
-  //
-  //   const balanceAfter = await boredApeContract.balanceOf(safeAddress)
-  //   expect(balanceAfter).to.equal(BigNumber.from(1))
-  // });
-  //
-  // it("Ensure guard protects NFT", async function () {
-  //   const interace = new ethers.utils.Interface(nftContractABI);
-  //   const data = interace.encodeFunctionData("transferFrom", [safeAddress, lender.address, tokenId]);
-  //
-  //   const transaction: SafeTransactionDataPartial = {
-  //     to: tokenAddress,
-  //     value: '0',
-  //     data
-  //   }
-  //
-  //   const addGuardTx = await safeSdk.createTransaction(transaction)
-  //
-  //   await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted
-  // });
-  //
-  // it("Ensure guard protects removing guard", async function () {
-  //   const guardInterface = new ethers.utils.Interface(guardABI);
-  //   const data = guardInterface.encodeFunctionData("setGuard", [ethers.constants.AddressZero]);
-  //
-  //   const transaction: SafeTransactionDataPartial = {
-  //     to: safeAddress,
-  //     value: '0',
-  //     data
-  //   };
-  //
-  //   const addGuardTx = await safeSdk.createTransaction(transaction);
-  //   await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted;
-  // });
-  //
-  // it("Ensure guard protects adding module", async function () {
-  //   //Deploy Module
-  //   const BrentModule = await ethers.getContractFactory("BrentModule");
-  //   const module2 = await BrentModule.deploy(
-  //     safeAddress,
-  //     tokenAddress,
-  //     borrower.address,
-  //     tokenId);
-  //
-  //   await module2.deployed();
-  //   const module2Address = module2.address;
-  //
-  //   const safeTransaction = await safeSdk.getEnableModuleTx(module2Address);
-  //   await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
-  // });
-  //
-  // it("Ensure guard protects removing module", async function () {
-  //   const safeTransaction = await safeSdk.getDisableModuleTx(moduleAddress)
-  //   await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
-  // });
-  //
-  // it("Retrieve NFT from safe", async function () {
-  //   const BrentModule = await ethers.getContractFactory("BrentModule");
-  //   const module = BrentModule.attach(moduleAddress);
-  //
-  //   const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
-  //   const boredApeContract = MyContract.attach(tokenAddress);
-  //
-  //   const balanceBefore = await boredApeContract.balanceOf(borrower.address)
-  //   expect(balanceBefore).to.equal(BigNumber.from(0))
-  //
-  //   await module.connect(borrower).returnNFT();
-  //
-  //   const balance = await boredApeContract.balanceOf(borrower.address)
-  //   expect(balance).to.equal(BigNumber.from(1))
-  // });
+
+  it("Transfer NFT to safe", async function () {
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    const balanceBefore = await boredApeContract.balanceOf(safeAddress)
+    expect(balanceBefore).to.equal(BigNumber.from(0))
+
+    const tx = await boredApeContract.connect(lender).transferFrom(lender.address,safeAddress,tokenId)
+
+    const balanceAfter = await boredApeContract.balanceOf(safeAddress)
+    expect(balanceAfter).to.equal(BigNumber.from(1))
+  });
+
+  it("Ensure guard protects NFT", async function () {
+    const interace = new ethers.utils.Interface(nftContractABI);
+    const data = interace.encodeFunctionData("transferFrom", [safeAddress, lender.address, tokenId]);
+
+    const transaction: SafeTransactionDataPartial = {
+      to: tokenAddress,
+      value: '0',
+      data
+    }
+
+    const addGuardTx = await safeSdk.createTransaction(transaction)
+
+    await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted
+  });
+
+  it("Ensure guard protects removing guard", async function () {
+    const guardInterface = new ethers.utils.Interface(guardABI);
+    const data = guardInterface.encodeFunctionData("setGuard", [ethers.constants.AddressZero]);
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeAddress,
+      value: '0',
+      data
+    };
+
+    const addGuardTx = await safeSdk.createTransaction(transaction);
+    await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted;
+  });
+
+  it("Ensure guard protects adding module", async function () {
+    //Deploy Module
+    const BrentModule = await ethers.getContractFactory("BrentModule");
+    const module2 = await BrentModule.deploy(
+      safeAddress,
+      tokenAddress,
+      borrower.address,
+      tokenId);
+
+    await module2.deployed();
+    const module2Address = module2.address;
+
+    const safeTransaction = await safeSdk.getEnableModuleTx(module2Address);
+    await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
+  });
+
+  it("Ensure guard protects removing module", async function () {
+    const safeTransaction = await safeSdk.getDisableModuleTx(safeManagerAddress)
+    await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
+  });
+
+  it("Retrieve NFT from safe", async function () {
+    const ZorosSafeManager = await ethers.getContractFactory("ZorosSafeManager");
+    const safeManager = ZorosSafeManager.attach(safeManagerAddress);
+
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    const balanceBefore = await boredApeContract.balanceOf(lender.address)
+    expect(balanceBefore).to.equal(BigNumber.from(0))
+
+    await safeManager.connect(lender).retrieveNFT(tokenId);
+
+    const balance = await boredApeContract.balanceOf(lender.address)
+    expect(balance).to.equal(BigNumber.from(1))
+  });
 
   function generatePreValidatedSignature(ownerAddress: string): string {
     const signature =

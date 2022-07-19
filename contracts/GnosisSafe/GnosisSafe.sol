@@ -172,12 +172,16 @@ contract GnosisSafe is
         // Use scope here to limit variable lifetime and prevent `stack too deep` errors
         {
             uint256 gasUsed = gasleft();
+
+            console.log("safe info");
+            console.log(gasleft());
             // If the gasPrice is 0 we assume that nearly all available gas can be used (it is always more than safeTxGas)
             // We only substract 2500 (compared to the 3000 before) to ensure that the amount passed is still higher than safeTxGas
             success = execute(to, value, data, operation, gasPrice == 0 ? (gasleft() - 2500) : safeTxGas);
             gasUsed = gasUsed.sub(gasleft());
             // If no safeTxGas and no gasPrice was set (e.g. both are 0), then the internal tx is required to be successful
             // This makes it possible to use `estimateGas` without issues, as it searches for the minimum gas where the tx doesn't revert
+
             require(success || safeTxGas != 0 || gasPrice != 0, "GS013");
             // We transfer the calculated tx costs to the tx.origin to avoid sending it to intermediate contracts that have made calls
             uint256 payment = 0;
