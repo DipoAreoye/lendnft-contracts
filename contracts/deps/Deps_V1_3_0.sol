@@ -2,7 +2,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import { GnosisSafeProxyFactory } from "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
-import { GnosisSafe } from "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
+import { GnosisSafe } from "../GnosisSafe/GnosisSafe.sol";
 import { MultiSend } from "@gnosis.pm/safe-contracts/contracts/libraries/MultiSend.sol";
 
 contract ProxyFactory_SV1_3_0 is GnosisSafeProxyFactory {}
