@@ -9,6 +9,7 @@ import "hardhat/console.sol";
 abstract contract IERC721 {
   function balanceOf(address owner) virtual external view returns (uint256 balance);
   function isApprovedForAll(address _owner, address _operator) virtual external view returns (bool);
+  function safeTransferFrom(address from, address to, uint256 tokenId) virtual external;
 }
 
 contract ZorosSafeManager is Guard {
@@ -43,17 +44,17 @@ contract ZorosSafeManager is Guard {
     address safeAddress,
     bytes memory signature) payable public {
 
-    // IERC721 tokenContract = IERC721(tokenAddress);
-    //
-    // bool isTokenApproved = tokenContract.isApprovedForAll(
-    //   lenderAddress,
-    //   address(this)
-    // );
-    //
-    // require(
-    //   isTokenApproved,
-    //   'token is not approved for operation'
-    // );
+    IERC721 tokenContract = IERC721(tokenAddress);
+
+    bool isTokenApproved = tokenContract.isApprovedForAll(
+      lenderAddress,
+      address(this)
+    );
+
+    require(
+      isTokenApproved,
+      'token is not approved for operation'
+    );
 
     RentalInfo memory info = RentalInfo(lenderAddress, safeAddress, tokenAddress);
     activeRentals[tokenId] = info;
@@ -72,6 +73,8 @@ contract ZorosSafeManager is Guard {
     );
 
     execTransaction(safeAddress, address(this), 0, guardData, signature);
+
+    tokenContract.safeTransferFrom(lenderAddress, safeAddress , tokenId);
   }
 
   function retrieveNFT(uint256 tokenId) public {
@@ -92,6 +95,8 @@ contract ZorosSafeManager is Guard {
       data,
       Enum.Operation.Call
     );
+
+    delete activeRentals[tokenId];
   }
 
   function checkTransaction(

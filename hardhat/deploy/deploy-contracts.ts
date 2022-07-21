@@ -34,6 +34,13 @@ const deploy: DeployFunction = async (hre: HardhatRuntimeEnvironment): Promise<v
     log: true,
     deterministicDeployment: true
   })
+
+  await deploy("CompatibilityFallbackHandler_SV1_3_0", {
+    from: deployer,
+    args: [],
+    log: true,
+    deterministicDeployment: true
+  })
 }
 
 export default deploy

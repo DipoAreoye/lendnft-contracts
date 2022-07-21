@@ -18,17 +18,13 @@ describe("Deploy Safe", function () {
   let borrower: Wallet;
   let tokenAddress = "0x1aAD0be6EaB3EDbDd05c05601037CC4FCd9bB944";
   let safeManagerAddress: string;
-  let moduleAddress: string;
-  let guardAddress: string;
   let safeAddress: string;
   let tokenId: BigNumber;
 
   before("Deploy Safe, Module & Mint NFT to lender address", async function() {
-    console.log("heyyyyyy");
 
     //Deploy safe SDK dependency contracts
-    const deplys = await deployments.fixture();
-
+    await deployments.fixture();
 
     const [user1, user2] = waffle.provider.getWallets();
     borrower = user1
@@ -64,12 +60,13 @@ describe("Deploy Safe", function () {
       signer: borrower
     })
 
+    // Need to tell the SDK the addresses of our deployed contracts
     const chainId = await ethAdapter.getChainId()
     const contractNetworks: ContractNetworksConfig = {
       [chainId]: {
-        multiSendAddress: '0x34650C475Ac99A2aFd4fA7d5F801364f3eCC94DA',
-        safeMasterCopyAddress: '0x2c383D56322fDeaa1301070cd4F8E68F0cd91180',
-        safeProxyFactoryAddress: '0x3831318eF298172Cc7Aef3D816D158d46EB6963B'
+        multiSendAddress: '0x48FD1FC214Fd0d7901d775b3c9d7128514e123Ab',
+        safeMasterCopyAddress: '0x8a1497f3eAe314BD80d310FD12b6993C3B0fF6A4',
+        safeProxyFactoryAddress: '0x2bF28434F12edd5d7c29B5E56Daf907525C1C345'
       }
     }
 
@@ -80,67 +77,40 @@ describe("Deploy Safe", function () {
     const safeAccountConfig: SafeAccountConfig = {
       owners,
       threshold,
+      fallbackHandler:"0xDAFf25a30e2A29A32eD0783A908953B3DE396C6F"
     }
 
     safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
     safeAddress = safeSdk.getAddress();
-
-    // Deploy Module
-    // const BrentModule = await ethers.getContractFactory("BrentModule");
-    // const module = await BrentModule.deploy(
-    //   safeAddress,
-    //   tokenAddress,
-    //   borrower.address,
-    //   tokenId);
-    //
-    // await module.deployed();
-    // moduleAddress = module.address;
-    //
-    // // Add Module to safe and confirm
-    // const safeTransaction = await safeSdk.getEnableModuleTx(moduleAddress)
-    //
-    // await safeSdk.executeTransaction(safeTransaction)
-
-    //Deploy Guard
-    // const BrentGuard = await ethers.getContractFactory("BrentGuard");
-    // const guard = await BrentGuard.deploy(
-    //   tokenAddress,
-    //   lender.address,
-    //   tokenId,
-    //   safeAddress);
-    //
-    // await guard.deployed();
-    // guardAddress = guard.address;
-
-    // const guardInterface = new ethers.utils.Interface(guardABI);
-    // const data = guardInterface.encodeFunctionData("setGuard", [guardAddress]);
-    //
-    // const transaction: SafeTransactionDataPartial = {
-    //   to: safeAddress,
-    //   value: '0',
-    //   data
-    // }
-    //
-    // const addGuardTx = await safeSdk.createTransaction(transaction)
-    // await safeSdk.executeTransaction(addGuardTx)
   })
+
+  it("Create Listing", async function() {
+    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+    const boredApeContract = MyContract.attach(tokenAddress);
+
+    await boredApeContract.connect(lender)
+      .setApprovalForAll(safeManagerAddress, true);
+
+    expect(
+      await boredApeContract.isApprovedForAll(
+        lender.address, safeManagerAddress
+      )
+    ).to.equal(true);
+  });
 
   it("AcceptListing", async function () {
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
 
+    const balanceBefore = await boredApeContract.balanceOf(safeAddress)
+    expect(balanceBefore).to.equal(BigNumber.from(0))
+
     const ZorosSafeManager = await ethers.getContractFactory("ZorosSafeManager");
     const safeManagerContract = ZorosSafeManager.attach(safeManagerAddress);
 
     const signatures = generatePreValidatedSignature(safeManagerAddress)
-    console.log("Safe",safeAddress);
 
     const bytesString = ethers.utils.hexlify(signatures)
-    console.log(bytesString);
-
-    console.log("borrower", borrower.address)
-    console.log("lender", lender.address)
-    console.log("safeManager", safeManagerAddress)
 
     await safeManagerContract.connect(borrower).acceptListing(
       tokenId,
@@ -152,20 +122,23 @@ describe("Deploy Safe", function () {
     );
 
     expect(await safeSdk.isModuleEnabled(safeManagerAddress)).to.equal(true)
-  });
-
-  it("Transfer NFT to safe", async function () {
-    const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
-    const boredApeContract = MyContract.attach(tokenAddress);
-
-    const balanceBefore = await boredApeContract.balanceOf(safeAddress)
-    expect(balanceBefore).to.equal(BigNumber.from(0))
-
-    const tx = await boredApeContract.connect(lender).transferFrom(lender.address,safeAddress,tokenId)
 
     const balanceAfter = await boredApeContract.balanceOf(safeAddress)
     expect(balanceAfter).to.equal(BigNumber.from(1))
   });
+
+  // it("Transfer NFT to safe", async function () {
+  //   const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+  //   const boredApeContract = MyContract.attach(tokenAddress);
+  //
+  //   const balanceBefore = await boredApeContract.balanceOf(safeAddress)
+  //   expect(balanceBefore).to.equal(BigNumber.from(0))
+  //
+  //   const tx = await boredApeContract.connect(lender).transferFrom(lender.address,safeAddress,tokenId)
+  //
+  //   const balanceAfter = await boredApeContract.balanceOf(safeAddress)
+  //   expect(balanceAfter).to.equal(BigNumber.from(1))
+  // });
 
   it("Ensure guard protects NFT", async function () {
     const interace = new ethers.utils.Interface(nftContractABI);

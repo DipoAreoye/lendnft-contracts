@@ -5,7 +5,9 @@ import { GnosisSafeProxyFactory } from "@gnosis.pm/safe-contracts/contracts/prox
 // import { GnosisSafe } from "../GnosisSafe/GnosisSafe.sol";
 import { GnosisSafe } from "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
 import { MultiSend } from "@gnosis.pm/safe-contracts/contracts/libraries/MultiSend.sol";
+import { CompatibilityFallbackHandler } from "../GnosisSafe/handler/CompatibilityFallbackHandler.sol";
 
 contract ProxyFactory_SV1_3_0 is GnosisSafeProxyFactory {}
 contract GnosisSafe_SV1_3_0 is GnosisSafe {}
 contract MultiSend_SV1_3_0 is MultiSend {}
+contract CompatibilityFallbackHandler_SV1_3_0 is CompatibilityFallbackHandler {}
