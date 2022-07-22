@@ -16,7 +16,7 @@ contract ZorosSafeManager is Guard {
 
   mapping(bytes32 => bool) private restrictedFunctions;
 
-  // Safes -> tokenAdress/ID hashes
+  // Safes -> tokenAddress/ID hashes
   mapping(address => bytes32[]) public activeTokens;
 
   // Safes -> tokenAdress/ID hash ->  Rentals
@@ -69,14 +69,14 @@ contract ZorosSafeManager is Guard {
       address(this)
     );
 
-    execTransaction(safeAddress, address(this), 0, moduleData, signature);
+    execTransaction(safeAddress, 0, moduleData, signature);
 
     bytes memory guardData = abi.encodeWithSignature(
       "setGuard(address)",
       address(this)
     );
 
-    execTransaction(safeAddress, address(this), 0, guardData, signature);
+    execTransaction(safeAddress, 0, guardData, signature);
 
     tokenContract.safeTransferFrom(lenderAddress, safeAddress , tokenId);
 
@@ -91,7 +91,7 @@ contract ZorosSafeManager is Guard {
     bytes32 tokenHash = genrateRentalHash(tokenAddress, tokenId);
 
     RentalInfo memory info =
-      activeRentals[safeAddress][genrateRentalHash(tokenAddress, tokenId)];
+      activeRentals[safeAddress][tokenHash];
 
     require(msg.sender == info.lenderAddress, "Sender not authorized.");
 
@@ -110,6 +110,14 @@ contract ZorosSafeManager is Guard {
     );
 
     delete activeRentals[safeAddress][tokenHash];
+
+    bytes32[] memory tokenHashes = activeTokens[safeAddress];
+
+    for (uint i=0; i < tokenHashes.length; i++) {
+      if(tokenHash == tokenHashes[i]) {
+        delete tokenHashes[i];
+      }
+    }
   }
 
   function checkTransaction(
@@ -157,7 +165,6 @@ contract ZorosSafeManager is Guard {
 
    function execTransaction (
     address safeAddress,
-    address to,
     uint256 value,
     bytes memory data,
     bytes memory signature
