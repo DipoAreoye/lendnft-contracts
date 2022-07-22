@@ -33,6 +33,9 @@ contract ZorosSafeManager is Guard {
     restrictedFunctions[keccak256(abi.encodePacked(uint(0xe19a9dd9)))] = true; //Add Guard
     restrictedFunctions[keccak256(abi.encodePacked(uint(0x610b5925)))] = true; // Add Module
     restrictedFunctions[keccak256(abi.encodePacked(uint(0xe009cfde)))] = true; // Remove Module
+    restrictedFunctions[keccak256(abi.encodePacked(uint(0x0d582f13)))] = true; // Add Owner
+    restrictedFunctions[keccak256(abi.encodePacked(uint(0xf8dc5dd9)))] = true; // Remove Owner
+    restrictedFunctions[keccak256(abi.encodePacked(uint(0xe318b52b)))] = true; // Swap Owner
   }
 
   function acceptListing(
@@ -140,7 +143,16 @@ contract ZorosSafeManager is Guard {
   }
 
   function checkAfterExecution(bytes32 txHash, bool success) external override {
+    bytes32[] memory tokenHashes = activeTokens[msg.sender];
 
+    for (uint i=0; i < tokenHashes.length; i++) {
+      RentalInfo memory info = activeRentals[msg.sender][tokenHashes[i]];
+
+      IERC721 tokenContract = IERC721(info.tokenAddress);
+      uint256 balance = tokenContract.balanceOf(info.safeAddress);
+
+      require(balance == 1, 'Attempting prohibited token transfer');
+    }
   }
 
    function execTransaction (

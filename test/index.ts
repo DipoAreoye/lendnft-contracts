@@ -8,7 +8,12 @@ import guardABI from '../abi/GuardManager.json'
 import nftContractABI from '../abi/ERC721.json'
 
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk'
-import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
+import Safe,
+  { SafeFactory,
+    SafeAccountConfig,
+    AddOwnerTxParams,
+    RemoveOwnerTxParams,
+    SwapOwnerTxParams } from '@gnosis.pm/safe-core-sdk'
 import { SafeSignature, SafeTransactionDataPartial } from '@gnosis.pm/safe-core-sdk-types'
 import EthSignSignature from '../scripts/SafeSignature'
 
@@ -112,19 +117,61 @@ describe("Deploy Safe", function () {
 
     const bytesString = ethers.utils.hexlify(signatures)
 
+
+    const lenderBalanceBefore = await waffle.provider.getBalance(lender.address);
+
+    let overrides = {
+      value: ethers.utils.parseEther("0.01")
+    }
+
     await safeManagerContract.connect(borrower).acceptListing(
       tokenId,
       tokenAddress,
       lender.address,
       borrower.address,
       safeAddress,
-      bytesString
+      bytesString,
+      overrides
     );
 
     expect(await safeSdk.isModuleEnabled(safeManagerAddress)).to.equal(true)
 
     const balanceAfter = await boredApeContract.balanceOf(safeAddress)
     expect(balanceAfter).to.equal(BigNumber.from(1))
+
+
+    const lenderBalanceAfter = await waffle.provider.getBalance(lender.address);
+    const lenderBalanceDiff = lenderBalanceAfter.sub(lenderBalanceBefore)
+    expect(lenderBalanceDiff).to.equal(ethers.utils.parseEther("0.00975"));
+  });
+
+  it("Add owner to safe", async function () {
+    const params: AddOwnerTxParams = {
+      ownerAddress: lender.address
+    }
+
+    const safeTransaction = await safeSdk.getAddOwnerTx(params)
+    await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted
+  });
+
+  it("Remove owner from safe", async function () {
+      const params: RemoveOwnerTxParams = {
+        ownerAddress: safeManagerAddress,
+        threshold: 1
+      }
+
+      const safeTransaction = await safeSdk.getRemoveOwnerTx(params)
+      await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted
+  });
+
+  it("Swap owner from safe", async function () {
+    const params: SwapOwnerTxParams = {
+      oldOwnerAddress: borrower.address,
+      newOwnerAddress: lender.address
+    }
+
+    const safeTransaction = await safeSdk.getSwapOwnerTx(params)
+    await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted
   });
 
   it("Ensure guard protects NFT", async function () {
@@ -138,7 +185,6 @@ describe("Deploy Safe", function () {
     }
 
     const addGuardTx = await safeSdk.createTransaction(transaction)
-
     await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted
   });
 
