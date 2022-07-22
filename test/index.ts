@@ -21,7 +21,7 @@ describe("Deploy Safe", function () {
   let safeAddress: string;
   let tokenId: BigNumber;
 
-  before("Deploy Safe, Module & Mint NFT to lender address", async function() {
+  before("Deploy Safe & Mint NFT to lender address", async function() {
 
     //Deploy safe SDK dependency contracts
     await deployments.fixture();
@@ -127,19 +127,6 @@ describe("Deploy Safe", function () {
     expect(balanceAfter).to.equal(BigNumber.from(1))
   });
 
-  // it("Transfer NFT to safe", async function () {
-  //   const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
-  //   const boredApeContract = MyContract.attach(tokenAddress);
-  //
-  //   const balanceBefore = await boredApeContract.balanceOf(safeAddress)
-  //   expect(balanceBefore).to.equal(BigNumber.from(0))
-  //
-  //   const tx = await boredApeContract.connect(lender).transferFrom(lender.address,safeAddress,tokenId)
-  //
-  //   const balanceAfter = await boredApeContract.balanceOf(safeAddress)
-  //   expect(balanceAfter).to.equal(BigNumber.from(1))
-  // });
-
   it("Ensure guard protects NFT", async function () {
     const interace = new ethers.utils.Interface(nftContractABI);
     const data = interace.encodeFunctionData("transferFrom", [safeAddress, lender.address, tokenId]);
@@ -200,7 +187,11 @@ describe("Deploy Safe", function () {
     const balanceBefore = await boredApeContract.balanceOf(lender.address)
     expect(balanceBefore).to.equal(BigNumber.from(0))
 
-    await safeManager.connect(lender).retrieveNFT(tokenId);
+    await safeManager.connect(lender).retrieveNFT(
+      safeAddress,
+      tokenAddress,
+      tokenId
+    );
 
     const balance = await boredApeContract.balanceOf(lender.address)
     expect(balance).to.equal(BigNumber.from(1))

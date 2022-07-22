@@ -16,18 +16,17 @@ contract ZorosSafeManager is Guard {
 
   mapping(bytes32 => bool) private restrictedFunctions;
 
-  //tokenId -> RentalInfo
-  mapping(uint256 => RentalInfo) public activeRentals;
-  // Users -> Safes
-  mapping(address => address) public safes;
+  // Safes -> tokenAdress/ID hashes
+  mapping(address => bytes32[]) public activeTokens;
 
-  // Safes -> tokenID
-  mapping(address => uint256[]) public activeTokens;
+  // Safes -> tokenAdress/ID hash ->  Rentals
+  mapping(address => mapping(bytes32 => RentalInfo)) public activeRentals;
 
   struct RentalInfo {
     address lenderAddress;
     address safeAddress;
     address tokenAddress;
+    uint256 tokenId;
   }
 
   constructor() {
@@ -46,19 +45,21 @@ contract ZorosSafeManager is Guard {
 
     IERC721 tokenContract = IERC721(tokenAddress);
 
-    bool isTokenApproved = tokenContract.isApprovedForAll(
-      lenderAddress,
-      address(this)
-    );
-
     require(
-      isTokenApproved,
+      tokenContract.isApprovedForAll(lenderAddress, address(this)),
       'token is not approved for operation'
     );
 
-    RentalInfo memory info = RentalInfo(lenderAddress, safeAddress, tokenAddress);
-    activeRentals[tokenId] = info;
-    activeTokens[safeAddress].push(tokenId);
+    bytes32 rentalhash = genrateRentalHash(tokenAddress, tokenId);
+
+    activeRentals[safeAddress][rentalhash] = RentalInfo(
+      lenderAddress,
+      safeAddress,
+      tokenAddress,
+      tokenId
+    );
+
+    activeTokens[safeAddress].push(rentalhash);
 
     bytes memory moduleData = abi.encodeWithSignature(
       "enableModule(address)",
@@ -75,10 +76,19 @@ contract ZorosSafeManager is Guard {
     execTransaction(safeAddress, address(this), 0, guardData, signature);
 
     tokenContract.safeTransferFrom(lenderAddress, safeAddress , tokenId);
+
+    payable(lenderAddress).send(msg.value * 975 / 1000);
   }
 
-  function retrieveNFT(uint256 tokenId) public {
-    RentalInfo memory info = activeRentals[tokenId];
+  function retrieveNFT(
+    address safeAddress,
+    address tokenAddress,
+    uint256 tokenId) public {
+
+    bytes32 tokenHash = genrateRentalHash(tokenAddress, tokenId);
+
+    RentalInfo memory info =
+      activeRentals[safeAddress][genrateRentalHash(tokenAddress, tokenId)];
 
     require(msg.sender == info.lenderAddress, "Sender not authorized.");
 
@@ -90,13 +100,13 @@ contract ZorosSafeManager is Guard {
     );
 
     GnosisSafe(payable(info.safeAddress)).execTransactionFromModule(
-      info.tokenAddress,
+      tokenAddress,
       0,
       data,
       Enum.Operation.Call
     );
 
-    delete activeRentals[tokenId];
+    delete activeRentals[safeAddress][tokenHash];
   }
 
   function checkTransaction(
@@ -113,6 +123,13 @@ contract ZorosSafeManager is Guard {
     bytes memory,
     address
   ) external view override {
+    bytes32[] memory tokenHashes = activeTokens[msg.sender];
+
+    for (uint i=0; i < tokenHashes.length; i++) {
+      RentalInfo memory info = activeRentals[msg.sender][tokenHashes[i]];
+      require(to != info.tokenAddress, 'Cannot make transaction on address');
+    }
+
     bytes memory selector = new bytes(32);
 
     for (uint8 i = 28; i <= 31; i++) {
@@ -124,16 +141,6 @@ contract ZorosSafeManager is Guard {
 
   function checkAfterExecution(bytes32 txHash, bool success) external override {
 
-    uint256[] memory tokens = activeTokens[msg.sender];
-
-    for (uint i=0; i < tokens.length; i++) {
-      RentalInfo memory info = activeRentals[tokens[i]];
-
-      IERC721 tokenContract = IERC721(info.tokenAddress);
-      uint256 balance = tokenContract.balanceOf(info.safeAddress);
-
-      require(balance == 1, 'Attempting prohibited token transfer');
-    }
   }
 
    function execTransaction (
@@ -143,7 +150,6 @@ contract ZorosSafeManager is Guard {
     bytes memory data,
     bytes memory signature
   ) internal {
-
     GnosisSafe(payable(safeAddress)).execTransaction(
       safeAddress,
       value,
@@ -156,5 +162,12 @@ contract ZorosSafeManager is Guard {
       payable(address(0)),
       signature
     );
+  }
+
+  function genrateRentalHash(
+    address tokenAdress,
+    uint256 tokenId
+  ) internal returns(bytes32) {
+    return keccak256(abi.encodePacked(tokenAdress, tokenId));
   }
 }
