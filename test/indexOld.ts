@@ -21,7 +21,6 @@ describe("Deploy Safe", function () {
   let safeSdk: Safe;
   let lender : Wallet;
   let borrower: Wallet;
-  let dipo: Wallet;
   let tokenAddress = "0x1aAD0be6EaB3EDbDd05c05601037CC4FCd9bB944";
   let safeManagerAddress: string;
   let safeAddress: string;
@@ -32,14 +31,13 @@ describe("Deploy Safe", function () {
     //Deploy safe SDK dependency contracts
     await deployments.fixture();
 
-    const [user1, user2, user3] = waffle.provider.getWallets();
+    const [user1, user2] = waffle.provider.getWallets();
     borrower = user1
     lender = user2
-    dipo = user3
 
     //Deploy ZorosSafeManager
-    const SummonRentalManager = await ethers.getContractFactory("SummonRentalManager");
-    const safeManager = await SummonRentalManager.deploy();
+    const ZorosSafeManager = await ethers.getContractFactory("ZorosSafeManager");
+    const safeManager = await ZorosSafeManager.deploy();
 
     await safeManager.deployed();
     safeManagerAddress = safeManager.address;
@@ -79,7 +77,7 @@ describe("Deploy Safe", function () {
 
     const safeFactory = await SafeFactory.create({ethAdapter, contractNetworks})
 
-    const owners = [dipo.address, safeManagerAddress];
+    const owners = [borrower.address, safeManagerAddress];
     const threshold = 1
     const safeAccountConfig: SafeAccountConfig = {
       owners,
@@ -91,8 +89,21 @@ describe("Deploy Safe", function () {
     safeAddress = safeSdk.getAddress();
   })
 
+  // it("Create Listing", async function() {
+  //   const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
+  //   const boredApeContract = MyContract.attach(tokenAddress);
+  //
+  //   await boredApeContract.connect(lender)
+  //     .setApprovalForAll(safeManagerAddress, true);
+  //
+  //   expect(
+  //     await boredApeContract.isApprovedForAll(
+  //       lender.address, safeManagerAddress
+  //     )
+  //   ).to.equal(true);
+  // });
 
-  it("Add Rental", async function () {
+  it("AcceptListing", async function () {
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
 
@@ -105,11 +116,13 @@ describe("Deploy Safe", function () {
     const signatures = generatePreValidatedSignature(safeManagerAddress)
     const bytesString = ethers.utils.hexlify(signatures)
 
+    const lenderBalanceBefore = await waffle.provider.getBalance(lender.address);
+
     let overrides = {
       value: ethers.utils.parseEther("0.01")
     }
 
-    await safeManagerContract.connect(lender).addRental(
+    await safeManagerContract.connect(lender).acceptListing(
       tokenId,
       tokenAddress,
       lender.address,
