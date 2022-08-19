@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
-import "@gnosis.pm/safe-contracts/contracts/base/GuardManager.sol";
+import "hardhat/console.sol";
+import "./GnosisSafe/GnosisSafe.sol";
 
 abstract contract IERC721 {
   function safeTransferFrom(address from, address to, uint256 tokenId) virtual external;
@@ -26,17 +26,17 @@ contract SummonRentalManager {
     address prevOwner,
     address safeAddress,
     address lenderAddress,
-    address borrower,
-    address tokenAddress,
     address borrowerAddress,
+    address tokenAddress,
     uint256 tokenId,
+    address accessorAddress,
     bytes memory signature
   ) public {
     GnosisSafe safe = GnosisSafe(payable(safeAddress));
 
     // Ensure safe is availible
     address[] memory owners = safe.getOwners();
-    require(owners.length != 2, "safe address is already in use");
+    require(owners.length == 2, "safe address is already in use");
 
     // Add module to safe to enable NFT return without threshold requirement
     bytes memory moduleData = abi.encodeWithSignature(
@@ -53,19 +53,30 @@ contract SummonRentalManager {
       lenderAddress
     );
 
-    // Add Borrower to safe and remove current Smart Contract as owner
-    safe.swapOwner(prevOwner, address(this), borrowerAddress);
-    safe.changeThreshold(2);
+    // Add Borrower to safe
+    bytes memory swapOwnerData = abi.encodeWithSignature(
+      "addOwnerWithThreshold(address,uint256)",
+      borrowerAddress,
+      1
+    );
+
+    // simulateTransaction(accessorAddress,safeAddress, 0, swapOwnerData, signature);
+    execTransaction(safeAddress, 0, swapOwnerData, signature);
+
+    // Remove current Smart Contract as owner
+    bytes memory removeOwnerData = abi.encodeWithSignature(
+      "removeOwner(address,address,uint256)",
+      prevOwner,
+      address(this),
+      2
+    );
+    execTransaction(safeAddress, 0, removeOwnerData, signature);
   }
+
 
   function removeBorrowerFromSafe(address safeAddress, address tokenAddress, uint256 tokenId) internal {
     bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
     RentalInfo memory info = activeRentals[safeAddress][rentalHash];
-
-    require(msg.sender == info.lenderAddress, "sender not authorized");
-
-    IERC721 tokenContract = IERC721(tokenAddress);
-    tokenContract.safeTransferFrom(safeAddress, info.lenderAddress, tokenId);
 
     GnosisSafe safe = GnosisSafe(payable(safeAddress));
     address[] memory owners = safe.getOwners();
@@ -82,8 +93,33 @@ contract SummonRentalManager {
       }
     }
 
-    safe.swapOwner(prevOwner, info.borrowerAddress, address(this));
-    safe.changeThreshold(2);
+    // Remove Borrower and Add Contract to safe
+    bytes memory swapOwnerData = abi.encodeWithSignature(
+      "swapOwner(address,address,address)",
+      prevOwner,
+      info.borrowerAddress,
+      address(this)
+    );
+
+    GnosisSafe(payable(safeAddress)).execTransactionFromModule(
+      safeAddress,
+      0,
+      swapOwnerData,
+      Enum.Operation.Call
+    );
+
+    //Update threshold
+    bytes memory updateThresholdData = abi.encodeWithSignature(
+      "changeThreshold(uint256)",
+      1
+    );
+
+    GnosisSafe(payable(safeAddress)).execTransactionFromModule(
+      safeAddress,
+      0,
+      updateThresholdData,
+      Enum.Operation.Call
+    );
   }
 
   function returnNFT(
@@ -99,19 +135,19 @@ contract SummonRentalManager {
     //Ensure that the user triggering the return authorized the  rental
     require(msg.sender == info.lenderAddress, "sender not authorized");
 
-    bytes memory data = abi.encodeWithSignature(
-      "removeBorrowerFromSafe(address,address,uint256)",
+    removeBorrowerFromSafe(safeAddress, tokenAddress, tokenId);
+
+    bytes memory transferData = abi.encodeWithSignature(
+      "safeTransferFrom(address,address,uint256)",
       safeAddress,
       lenderAddress,
       tokenId
     );
 
-    // Call the transaction to reurn the NFT on behalf of the GnosisSafe
-    // (overriding thresholds)
     GnosisSafe(payable(safeAddress)).execTransactionFromModule(
-      address(this),
+      tokenAddress,
       0,
-      data,
+      transferData,
       Enum.Operation.Call
     );
 
@@ -154,4 +190,25 @@ contract SummonRentalManager {
      signature
    );
  }
+
+ function simulateTransaction (
+  address simulateTx,
+  address safeAddress,
+  uint256 value,
+  bytes memory data,
+  bytes memory signature
+) internal {
+  console.log("success 1");
+
+  (bool success) = GnosisSafe(payable(safeAddress)).simulateTx(
+    simulateTx,
+    safeAddress,
+    value,
+    data,
+    Enum.Operation.DelegateCall
+  );
+
+  console.log("success");
+  console.log(success);
+  }
 }

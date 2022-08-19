@@ -70,8 +70,8 @@ describe("Deploy Safe", function () {
     const contractNetworks: ContractNetworksConfig = {
       [chainId]: {
         multiSendAddress: '0x48FD1FC214Fd0d7901d775b3c9d7128514e123Ab',
-        safeMasterCopyAddress: '0x8a1497f3eAe314BD80d310FD12b6993C3B0fF6A4',
-        safeProxyFactoryAddress: '0x2bF28434F12edd5d7c29B5E56Daf907525C1C345'
+        safeMasterCopyAddress: '0x429f3A8f09bB62DC0d7382e9652b2E90DCcf286f',
+        safeProxyFactoryAddress: '0xDaDF5c84C6a31980991FBDBE7248c077094ee7C3'
       }
     }
 
@@ -82,7 +82,7 @@ describe("Deploy Safe", function () {
     const safeAccountConfig: SafeAccountConfig = {
       owners,
       threshold,
-      fallbackHandler:"0xDAFf25a30e2A29A32eD0783A908953B3DE396C6F"
+      fallbackHandler:"0x3671318f77f10C26e09A30dfE86e2DAA88C28E35"
     }
 
     safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
@@ -128,6 +128,8 @@ describe("Deploy Safe", function () {
       lender.address,
       borrower.address,
       safeAddress,
+      bytesString,
+      overrides
     );
 
     expect(await safeSdk.isModuleEnabled(safeManagerAddress)).to.equal(true)
