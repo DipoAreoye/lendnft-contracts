@@ -9,15 +9,6 @@ abstract contract IERC721 {
   function safeTransferFrom(address from, address to, uint256 tokenId) virtual external;
 }
 
-// abstract contract OwnerManager {
-//   function removeOwner(address prevOwner, address owner, uint256 _threshold) virtual external;
-//   function addOwnerWithThreshold(address owner, uint256 _threshold) virtual authorized;
-//   function swapOwner(address prevOwner, address oldOwner, address newOwner) virtual authorized;
-//   function getOwners() public virtual view returns (address[] memory);
-//   function changeThreshold(uint256 _threshold) public virtual authorized;
-//   function removeOwner(address prevOwner, address owner, uint256 _threshold) virtual authorized;
-// }
-
 contract SummonRentalManager {
 
   // Constant used for default owner of GnosisSafe
