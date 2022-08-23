@@ -19,6 +19,7 @@ contract SummonRentalManager {
   struct RentalInfo {
     address borrowerAddress;
     address lenderAddress;
+    bool isIntialized;
   }
 
   function addRental(
@@ -33,23 +34,28 @@ contract SummonRentalManager {
     GnosisSafe safe = GnosisSafe(payable(safeAddress));
 
     // Ensure safe is availible
-    address[] memory owners = safe.getOwners();
-    require(owners.length == 2, "safe address is already in use");
+    require(safe.isOwner(address(this)), "safe address is already in use");
 
-    // Add module to safe to enable NFT return without threshold requirement
-    bytes memory moduleData = abi.encodeWithSignature(
-      "enableModule(address)",
-      address(this)
-    );
-
-    execTransaction(safeAddress, 0, moduleData, signature);
+    // Ensure rental isn't already active
+    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
+    require(activeRentals[safeAddress][rentalHash].isIntialized == false, "rental is already active");
 
     // Store record of rental
-    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
     activeRentals[safeAddress][rentalHash] = RentalInfo(
       borrowerAddress,
-      lenderAddress
+      lenderAddress,
+      true
     );
+
+    if (!safe.isModuleEnabled(address(this))) {
+      // Add module to safe to enable NFT return without threshold requirement
+      bytes memory moduleData = abi.encodeWithSignature(
+        "enableModule(address)",
+        address(this)
+      );
+
+      execTransaction(safeAddress, 0, moduleData, signature);
+    }
 
     // Add Borrower to safe
     bytes memory swapOwnerData = abi.encodeWithSignature(
@@ -60,7 +66,7 @@ contract SummonRentalManager {
 
     execTransaction(safeAddress, 0, swapOwnerData, signature);
 
-    // Remove current Smart Contract as owner
+    // Remove current Smart Contract as owner & set threshold to 2
     bytes memory removeOwnerData = abi.encodeWithSignature(
       "removeOwner(address,address,uint256)",
       prevOwner,
@@ -69,7 +75,6 @@ contract SummonRentalManager {
     );
     execTransaction(safeAddress, 0, removeOwnerData, signature);
   }
-
 
   function removeBorrowerFromSafe(address safeAddress, address tokenAddress, uint256 tokenId) internal {
     bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);

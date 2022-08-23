@@ -4,18 +4,11 @@ import { deployments, ethers, waffle } from "hardhat";
 import { BigNumber } from "ethers";
 import EthersAdapter from '@gnosis.pm/safe-ethers-lib'
 import { Wallet } from '@ethersproject/wallet'
-import guardABI from '../abi/GuardManager.json'
 import nftContractABI from '../abi/ERC721.json'
 
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk'
-import Safe,
-  { SafeFactory,
-    SafeAccountConfig,
-    AddOwnerTxParams,
-    RemoveOwnerTxParams,
-    SwapOwnerTxParams } from '@gnosis.pm/safe-core-sdk'
-import { SafeSignature, SafeTransactionDataPartial } from '@gnosis.pm/safe-core-sdk-types'
-import EthSignSignature from '../scripts/SafeSignature'
+import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
+import { SafeTransactionDataPartial } from '@gnosis.pm/safe-core-sdk-types'
 
 export const SENTINEL_ADDRESS = '0x0000000000000000000000000000000000000001'
 
@@ -27,7 +20,6 @@ describe("Deploy Safe", function () {
   let dipo: Wallet;
   let tokenAddress = "0x1aAD0be6EaB3EDbDd05c05601037CC4FCd9bB944";
   let safeManagerAddress: string;
-  let simulateTxAccessorAddress: string;
   let safeAddress: string;
   let daoSafeAddress: string;
   let tokenId: BigNumber;
@@ -36,11 +28,6 @@ describe("Deploy Safe", function () {
 
     //Deploy safe SDK dependency contracts
     await deployments.fixture();
-
-    //Deploy SimulateTxAccessor
-    const SimulateTxAccessor = await ethers.getContractFactory("SimulateTxAccessor");
-    const simulateTxAccessor = await SimulateTxAccessor.deploy();
-    simulateTxAccessorAddress = simulateTxAccessor.address;
 
     const [user1, user2, user3] = waffle.provider.getWallets();
     borrower = user1
@@ -177,6 +164,11 @@ describe("Deploy Safe", function () {
     const balanceBefore = await boredApeContract.balanceOf(safeSdkDao.getAddress())
     expect(balanceBefore).to.equal(BigNumber.from(0))
 
+    expect((await safeManager.getRentalInfo(
+      safeSdkRental.getAddress(),
+      tokenAddress,
+      tokenId)).isIntialized).to.equal(true);
+
     await safeManager.connect(lender).returnNFT(
       safeAddress,
       safeSdkDao.getAddress(),
@@ -187,8 +179,13 @@ describe("Deploy Safe", function () {
     const balance = await boredApeContract.balanceOf(safeSdkDao.getAddress())
     expect(balance).to.equal(BigNumber.from(1))
 
+    expect(await safeSdkRental.isOwner(safeManagerAddress)).to.equal(true);
     expect(await safeSdkRental.isOwner(borrower.address)).to.equal(false);
     expect(await safeSdkRental.getThreshold()).to.equal(1);
+    expect((await safeManager.getRentalInfo(
+      safeSdkRental.getAddress(),
+      tokenAddress,
+      tokenId)).isIntialized).to.equal(false);
   });
 
   function generatePreValidatedSignature(ownerAddress: string): string {
