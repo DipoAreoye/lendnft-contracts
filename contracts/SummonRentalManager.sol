@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
 import "./GnosisSafe/GnosisSafe.sol";
 
 abstract contract IERC721 {
@@ -29,7 +28,6 @@ contract SummonRentalManager {
     address borrowerAddress,
     address tokenAddress,
     uint256 tokenId,
-    address accessorAddress,
     bytes memory signature
   ) public {
     GnosisSafe safe = GnosisSafe(payable(safeAddress));
@@ -60,7 +58,6 @@ contract SummonRentalManager {
       1
     );
 
-    // simulateTransaction(accessorAddress,safeAddress, 0, swapOwnerData, signature);
     execTransaction(safeAddress, 0, swapOwnerData, signature);
 
     // Remove current Smart Contract as owner
@@ -132,8 +129,10 @@ contract SummonRentalManager {
     bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
     RentalInfo memory info = activeRentals[safeAddress][rentalHash];
 
+    GnosisSafe safe = GnosisSafe(payable(lenderAddress));
+
     //Ensure that the user triggering the return authorized the  rental
-    require(msg.sender == info.lenderAddress, "sender not authorized");
+    require(safe.isOwner(msg.sender), "sender not authorized");
 
     removeBorrowerFromSafe(safeAddress, tokenAddress, tokenId);
 
@@ -159,7 +158,7 @@ contract SummonRentalManager {
     address safe,
     address tokenAddress,
     uint256 tokenId
-  ) public returns(RentalInfo memory) {
+  ) public view returns(RentalInfo memory) {
     bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
     return activeRentals[safe][rentalHash];
   }
@@ -167,7 +166,7 @@ contract SummonRentalManager {
   function genrateRentalHash(
     address tokenAdress,
     uint256 tokenId
-  ) internal returns(bytes32) {
+  ) internal view returns(bytes32) {
     return keccak256(abi.encodePacked(tokenAdress, tokenId));
   }
 
@@ -190,25 +189,4 @@ contract SummonRentalManager {
      signature
    );
  }
-
- function simulateTransaction (
-  address simulateTx,
-  address safeAddress,
-  uint256 value,
-  bytes memory data,
-  bytes memory signature
-) internal {
-  console.log("success 1");
-
-  (bool success) = GnosisSafe(payable(safeAddress)).simulateTx(
-    simulateTx,
-    safeAddress,
-    value,
-    data,
-    Enum.Operation.DelegateCall
-  );
-
-  console.log("success");
-  console.log(success);
-  }
 }

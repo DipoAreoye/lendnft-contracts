@@ -20,7 +20,8 @@ import EthSignSignature from '../scripts/SafeSignature'
 export const SENTINEL_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 describe("Deploy Safe", function () {
-  let safeSdk: Safe;
+  let safeSdkRental: Safe;
+  let safeSdkDao: Safe;
   let lender : Wallet;
   let borrower: Wallet;
   let dipo: Wallet;
@@ -28,6 +29,7 @@ describe("Deploy Safe", function () {
   let safeManagerAddress: string;
   let simulateTxAccessorAddress: string;
   let safeAddress: string;
+  let daoSafeAddress: string;
   let tokenId: BigNumber;
 
   before("Deploy Safe & Mint NFT to lender address", async function() {
@@ -69,34 +71,45 @@ describe("Deploy Safe", function () {
       tokenId = BigNumber.from(transferEvent[0].topics[3])
     }
 
-    //Deploy Safe
+    //Deploy Safe to Hold NFT
     const ethAdapter = new EthersAdapter({
       ethers,
-      signer: borrower
+      signer: lender
     })
 
     // Need to tell the SDK the addresses of our deployed contracts
     const chainId = await ethAdapter.getChainId()
     const contractNetworks: ContractNetworksConfig = {
       [chainId]: {
-        multiSendAddress: '0xCB9136828F00f1d7544051f6d0A53e3c653dfa40',
-        safeMasterCopyAddress: '0x49d78Ed4aCFc0E4c35D35CB500De4Ee1E215d672',
-        safeProxyFactoryAddress: '0x467E5f3767308a4ee6d01167992C0914474a0960'
+        multiSendAddress: '0x48FD1FC214Fd0d7901d775b3c9d7128514e123Ab',
+        safeMasterCopyAddress: '0x8a1497f3eAe314BD80d310FD12b6993C3B0fF6A4',
+        safeProxyFactoryAddress: '0x2bF28434F12edd5d7c29B5E56Daf907525C1C345'
       }
     }
 
     const safeFactory = await SafeFactory.create({ethAdapter, contractNetworks})
 
-    const owners = [dipo.address, safeManagerAddress];
-    const threshold = 1
-    const safeAccountConfig: SafeAccountConfig = {
+    let owners = [dipo.address, safeManagerAddress];
+    let threshold = 1
+    let safeAccountConfig: SafeAccountConfig = {
       owners,
       threshold,
-      fallbackHandler:"0xfd58D98C88dA02e270Dae0DD068F490b6C7AFDb6"
+      fallbackHandler:"0xDAFf25a30e2A29A32eD0783A908953B3DE396C6F"
     }
 
-    safeSdk = await safeFactory.deploySafe({ safeAccountConfig })
-    safeAddress = safeSdk.getAddress();
+    safeSdkRental = await safeFactory.deploySafe({ safeAccountConfig })
+    safeAddress = safeSdkRental.getAddress();
+
+    //deploy DAO Safe
+    safeAccountConfig.owners = [lender.address];
+    safeAccountConfig.threshold = 1;
+
+    safeSdkDao = await safeFactory.deploySafe( {safeAccountConfig } )
+    daoSafeAddress = safeSdkDao.getAddress();
+
+    await boredApeContract.connect(lender)[
+      "safeTransferFrom(address,address,uint256)"
+    ](lender.address, daoSafeAddress, tokenId);
   })
 
 
@@ -107,115 +120,51 @@ describe("Deploy Safe", function () {
     const signatures = generatePreValidatedSignature(safeManagerAddress)
     const bytesString = ethers.utils.hexlify(signatures)
 
-    const owners = await safeSdk.getOwners()
+    const owners = await safeSdkRental.getOwners()
     const oldOwnerIndex = owners.indexOf(safeManagerAddress)
     const prevOwner = oldOwnerIndex == 0 ? SENTINEL_ADDRESS : owners[oldOwnerIndex - 1];
 
     await safeManagerContract.connect(lender).addRental(
       prevOwner,
       safeAddress,
-      lender.address,
+      daoSafeAddress,
       borrower.address,
       tokenAddress,
       tokenId,
-      simulateTxAccessorAddress,
       bytesString
     );
 
-    expect(await safeSdk.isModuleEnabled(safeManagerAddress)).to.equal(true);
-    expect(await safeSdk.isOwner(borrower.address)).to.equal(true);
-    expect(await safeSdk.getThreshold()).to.equal(2);
+    expect(await safeSdkRental.isModuleEnabled(safeManagerAddress)).to.equal(true);
+    expect(await safeSdkRental.isOwner(borrower.address)).to.equal(true);
+    expect(await safeSdkRental.getThreshold()).to.equal(2);
   });
 
-  // it("Add owner to safe", async function () {
-  //   const params: AddOwnerTxParams = {
-  //     ownerAddress: lender.address
-  //   }
-  //
-  //   const safeTransaction = await safeSdk.getAddOwnerTx(params)
-  //   await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted
-  // });
-  //
-  // it("Remove owner from safe", async function () {
-  //     const params: RemoveOwnerTxParams = {
-  //       ownerAddress: safeManagerAddress,
-  //       threshold: 1
-  //     }
-  //
-  //     const safeTransaction = await safeSdk.getRemoveOwnerTx(params)
-  //     await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted
-  // });
-  //
-  // it("Swap owner from safe", async function () {
-  //   const params: SwapOwnerTxParams = {
-  //     oldOwnerAddress: borrower.address,
-  //     newOwnerAddress: lender.address
-  //   }
-  //
-  //   const safeTransaction = await safeSdk.getSwapOwnerTx(params)
-  //   await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted
-  // });
-  //
-  // it("Ensure guard protects NFT", async function () {
-  //   const interace = new ethers.utils.Interface(nftContractABI);
-  //   const data = interace.encodeFunctionData("transferFrom", [safeAddress, lender.address, tokenId]);
-  //
-  //   const transaction: SafeTransactionDataPartial = {
-  //     to: tokenAddress,
-  //     value: '0',
-  //     data
-  //   }
-  //
-  //   const addGuardTx = await safeSdk.createTransaction(transaction)
-  //   await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted
-  // });
-  //
-  // it("Ensure guard protects removing guard", async function () {
-  //   const guardInterface = new ethers.utils.Interface(guardABI);
-  //   const data = guardInterface.encodeFunctionData("setGuard", [ethers.constants.AddressZero]);
-  //
-  //   const transaction: SafeTransactionDataPartial = {
-  //     to: safeAddress,
-  //     value: '0',
-  //     data
-  //   };
-  //
-  //   const addGuardTx = await safeSdk.createTransaction(transaction);
-  //   await expect(safeSdk.executeTransaction(addGuardTx)).to.be.reverted;
-  // });
-  //
-  // it("Ensure guard protects adding module", async function () {
-  //   //Deploy Module
-  //   const BrentModule = await ethers.getContractFactory("BrentModule");
-  //   const module2 = await BrentModule.deploy(
-  //     safeAddress,
-  //     tokenAddress,
-  //     borrower.address,
-  //     tokenId);
-  //
-  //   await module2.deployed();
-  //   const module2Address = module2.address;
-  //
-  //   const safeTransaction = await safeSdk.getEnableModuleTx(module2Address);
-  //   await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
-  // });
-  //
-  // it("Ensure guard protects removing module", async function () {
-  //   const safeTransaction = await safeSdk.getDisableModuleTx(safeManagerAddress)
-  //   await expect(safeSdk.executeTransaction(safeTransaction)).to.be.reverted;
-  // });
 
   it("Transfer NFT to safe", async function () {
     const BoredApeYachtClub = await ethers.getContractFactory("BoredApeYachtClub");
     const nftContract = BoredApeYachtClub.attach(tokenAddress);
 
+    const interace = new ethers.utils.Interface(nftContractABI);
+
     const balanceBefore = await nftContract.balanceOf(safeAddress);
     expect(balanceBefore).to.equal(BigNumber.from(0));
 
-    await nftContract.connect(lender)["safeTransferFrom(address,address,uint256)"](lender.address, safeAddress, tokenId);
+    const data = interace.encodeFunctionData(
+      "safeTransferFrom(address,address,uint256)",
+     [safeSdkDao.getAddress(),safeAddress, tokenId]
+    );
+
+    const transaction: SafeTransactionDataPartial = {
+      to: tokenAddress,
+      value: '0',
+      data
+    };
+
+    const daoTx = await safeSdkDao.createTransaction(transaction);
+    await safeSdkDao.executeTransaction(daoTx);
 
     const balanceAfter = await nftContract.balanceOf(safeAddress);
-    expect(balanceAfter).to.equal(BigNumber.from(1));
+    expect(BigNumber.from(1)).to.equal(balanceAfter);
   });
 
   it("Retrieve NFT from safe", async function () {
@@ -225,21 +174,21 @@ describe("Deploy Safe", function () {
     const MyContract = await ethers.getContractFactory("BoredApeYachtClub");
     const boredApeContract = MyContract.attach(tokenAddress);
 
-    const balanceBefore = await boredApeContract.balanceOf(lender.address)
+    const balanceBefore = await boredApeContract.balanceOf(safeSdkDao.getAddress())
     expect(balanceBefore).to.equal(BigNumber.from(0))
 
     await safeManager.connect(lender).returnNFT(
       safeAddress,
-      lender.address,
+      safeSdkDao.getAddress(),
       tokenAddress,
       tokenId
     );
 
-    const balance = await boredApeContract.balanceOf(lender.address)
+    const balance = await boredApeContract.balanceOf(safeSdkDao.getAddress())
     expect(balance).to.equal(BigNumber.from(1))
 
-    expect(await safeSdk.isOwner(borrower.address)).to.equal(false);
-    expect(await safeSdk.getThreshold()).to.equal(1);
+    expect(await safeSdkRental.isOwner(borrower.address)).to.equal(false);
+    expect(await safeSdkRental.getThreshold()).to.equal(1);
   });
 
   function generatePreValidatedSignature(ownerAddress: string): string {

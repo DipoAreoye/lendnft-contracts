@@ -1,11 +1,11 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const ZorosSafeManager = await ethers.getContractFactory("ZorosSafeManager");
-  const contract = await ZorosSafeManager.deploy();
+  const SummonRentalManager = await ethers.getContractFactory("SummonRentalManager");
+  const contract = await SummonRentalManager.deploy();
 
   await contract.deployed();
-  console.log(`ZorosSafeManager deployed to ${contract.address}`);
+  console.log(`SummonRentalManager deployed to ${contract.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
