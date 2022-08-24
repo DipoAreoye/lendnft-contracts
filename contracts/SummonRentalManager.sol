@@ -126,7 +126,6 @@ contract SummonRentalManager {
 
   function returnNFT(
     address safeAddress,
-    address lenderAddress,
     address tokenAddress,
     uint256 tokenId
   ) public {
@@ -134,7 +133,8 @@ contract SummonRentalManager {
     bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
     RentalInfo memory info = activeRentals[safeAddress][rentalHash];
 
-    GnosisSafe safe = GnosisSafe(payable(lenderAddress));
+
+    GnosisSafe safe = GnosisSafe(payable(info.lenderAddress));
 
     //Ensure that the user triggering the return authorized the  rental
     require(safe.isOwner(msg.sender), "sender not authorized");
@@ -144,7 +144,7 @@ contract SummonRentalManager {
     bytes memory transferData = abi.encodeWithSignature(
       "safeTransferFrom(address,address,uint256)",
       safeAddress,
-      lenderAddress,
+      info.lenderAddress,
       tokenId
     );
 

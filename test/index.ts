@@ -171,7 +171,6 @@ describe("Deploy Safe", function () {
 
     await safeManager.connect(lender).returnNFT(
       safeAddress,
-      safeSdkDao.getAddress(),
       tokenAddress,
       tokenId
     );
