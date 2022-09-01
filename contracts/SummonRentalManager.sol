@@ -13,7 +13,7 @@ contract SummonRentalManager {
   // Constant used for default owner of GnosisSafe
   address internal constant SENTINEL_OWNERS = address(0x1);
 
-  // Safes -> tokenAdress/ID hash -> RentalInfo
+  // Safes -> tokenAddress/ID hash -> RentalInfo
   mapping(address => mapping(bytes32 => RentalInfo)) public activeRentals;
 
   struct RentalInfo {
@@ -22,7 +22,6 @@ contract SummonRentalManager {
     bool isIntialized;
   }
 
-  // Create a new rental, prevOwner is used by the GnosisSafe contract as a.
   function addRental(
     address safeAddress,
     address borrowerAddress,
@@ -129,6 +128,7 @@ contract SummonRentalManager {
     );
   }
 
+  //prevOwner is used by GnosisSafe to point to oldBorrower
   function swapBorrower(
     address safeAddress,
     address tokenAddress,
@@ -140,7 +140,7 @@ contract SummonRentalManager {
     bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
     RentalInfo memory info = activeRentals[safeAddress][rentalHash];
 
-    // Ensure that the user triggering the swap authorized the  rental
+    // Ensure that the user triggering the swap authorized the rental
     require(msg.sender == info.lenderAddress, "Sender not authorized");
 
     bytes memory swapOwnerData = abi.encodeWithSignature(
