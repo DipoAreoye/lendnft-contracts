@@ -4,7 +4,9 @@ import { deployments, ethers, waffle } from "hardhat";
 import { BigNumber } from "ethers";
 import EthersAdapter from '@gnosis.pm/safe-ethers-lib'
 import { Wallet } from '@ethersproject/wallet'
+
 import nftContractABI from '../abi/ERC721.json'
+import rentalManagerABI from '../artifacts/contracts/SummonRentalManager.sol/SummonRentalManager.json'
 
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk'
 import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
@@ -13,6 +15,13 @@ import { SafeTransactionDataPartial } from '@gnosis.pm/safe-core-sdk-types'
 export const SENTINEL_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 describe("Deploy Safe", function () {
+  let localDeployments = {
+    gnosis: "",
+    proxyFactory: "",
+    multiSend: "",
+    fallbackHandler: ""
+  }
+
   let safeSdkRental: Safe;
   let safeSdkDao: Safe;
   let lender : Wallet;
@@ -28,6 +37,26 @@ describe("Deploy Safe", function () {
 
     //Deploy safe SDK dependency contracts
     await deployments.fixture();
+
+    const GnosisSafe = await ethers.getContractFactory("contracts/GnosisSafe/GnosisSafe.sol:GnosisSafe");
+    const gnosis = await GnosisSafe.deploy();
+    await gnosis.deployed();
+    localDeployments.gnosis = gnosis.address;
+
+    const GnosisSafeProxyFactory = await ethers.getContractFactory("contracts/GnosisSafe/proxies/GnosisSafeProxyFactory.sol:GnosisSafeProxyFactory");
+    const proxyFactory = await GnosisSafeProxyFactory.deploy();
+    await proxyFactory.deployed();
+    localDeployments.proxyFactory = proxyFactory.address;
+
+    const MultiSend = await ethers.getContractFactory("contracts/GnosisSafe/libraries/MultiSend.sol:MultiSend");
+    const multiSend = await MultiSend.deploy();
+    await multiSend.deployed();
+    localDeployments.multiSend = multiSend.address;
+
+    const CompatibilityFallbackHandler = await ethers.getContractFactory("CompatibilityFallbackHandler");
+    const fallbackHandler = await CompatibilityFallbackHandler.deploy();
+    await fallbackHandler.deployed();
+    localDeployments.fallbackHandler = fallbackHandler.address;
 
     const [user1, user2, user3] = waffle.provider.getWallets();
     borrower = user1
@@ -68,20 +97,20 @@ describe("Deploy Safe", function () {
     const chainId = await ethAdapter.getChainId()
     const contractNetworks: ContractNetworksConfig = {
       [chainId]: {
-        multiSendAddress: '0x48FD1FC214Fd0d7901d775b3c9d7128514e123Ab',
-        safeMasterCopyAddress: '0x8a1497f3eAe314BD80d310FD12b6993C3B0fF6A4',
-        safeProxyFactoryAddress: '0x2bF28434F12edd5d7c29B5E56Daf907525C1C345'
+        multiSendAddress: localDeployments.multiSend,
+        safeMasterCopyAddress: localDeployments.gnosis,
+        safeProxyFactoryAddress: localDeployments.proxyFactory
       }
     }
 
     const safeFactory = await SafeFactory.create({ethAdapter, contractNetworks})
 
-    let owners = [dipo.address, safeManagerAddress];
+    let owners = [safeManagerAddress];
     let threshold = 1
     let safeAccountConfig: SafeAccountConfig = {
       owners,
       threshold,
-      fallbackHandler:"0xDAFf25a30e2A29A32eD0783A908953B3DE396C6F"
+      fallbackHandler: localDeployments.fallbackHandler
     }
 
     safeSdkRental = await safeFactory.deploySafe({ safeAccountConfig })
@@ -101,29 +130,30 @@ describe("Deploy Safe", function () {
 
 
   it("Add Rental", async function () {
-    const SummonRentalManager = await ethers.getContractFactory("SummonRentalManager");
-    const safeManagerContract = SummonRentalManager.attach(safeManagerAddress);
-
     const signatures = generatePreValidatedSignature(safeManagerAddress)
     const bytesString = ethers.utils.hexlify(signatures)
 
-    const owners = await safeSdkRental.getOwners()
-    const oldOwnerIndex = owners.indexOf(safeManagerAddress)
-    const prevOwner = oldOwnerIndex == 0 ? SENTINEL_ADDRESS : owners[oldOwnerIndex - 1];
+    const interace = new ethers.utils.Interface(rentalManagerABI.abi);
 
-    await safeManagerContract.connect(lender).addRental(
-      prevOwner,
-      safeAddress,
-      daoSafeAddress,
-      borrower.address,
-      tokenAddress,
-      tokenId,
-      bytesString
+    const data = interace.encodeFunctionData(
+      "addRental(address,address,address,uint256,bytes)",
+      [safeAddress,borrower.address,tokenAddress,tokenId,bytesString]
     );
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeManagerAddress,
+      value: '0',
+      data
+    };
+
+    const daoTx = await safeSdkDao.createTransaction(transaction);
+    await safeSdkDao.executeTransaction(daoTx);
 
     expect(await safeSdkRental.isModuleEnabled(safeManagerAddress)).to.equal(true);
     expect(await safeSdkRental.isOwner(borrower.address)).to.equal(true);
-    expect(await safeSdkRental.getThreshold()).to.equal(2);
+    expect(await safeSdkRental.isOwner(safeSdkDao.getAddress())).to.equal(true);
+    expect(await safeSdkRental.isOwner(safeManagerAddress)).to.equal(true);
+    expect(await safeSdkRental.getThreshold()).to.equal(3);
   });
 
 
@@ -154,6 +184,38 @@ describe("Deploy Safe", function () {
     expect(BigNumber.from(1)).to.equal(balanceAfter);
   });
 
+  it("Swap borrower on safe", async function () {
+    const owners = await safeSdkRental.getOwners()
+
+    const oldOwnerIndex = owners.findIndex((owner: string) =>
+     owner.toLowerCase() === borrower.address.toLowerCase()
+    )
+
+    const prevOwner = oldOwnerIndex == 0 ? SENTINEL_ADDRESS : owners[oldOwnerIndex - 1];
+
+    const interace = new ethers.utils.Interface(rentalManagerABI.abi);
+
+    expect(owners.includes(borrower.address)).to.equal(true);
+
+    const data = interace.encodeFunctionData(
+      "swapBorrower(address,address,uint256,address,address,address)",
+      [safeAddress,tokenAddress,tokenId,prevOwner,borrower.address,dipo.address]
+    );
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeManagerAddress,
+      value: '0',
+      data
+    };
+
+
+    const daoTx = await safeSdkDao.createTransaction(transaction);
+    await safeSdkDao.executeTransaction(daoTx);
+
+    expect(await safeSdkRental.isOwner(dipo.address)).to.equal(true);
+    expect(await safeSdkRental.isOwner(borrower.address)).to.equal(false);
+  });
+
   it("Retrieve NFT from safe", async function () {
     const SummonRentalManager = await ethers.getContractFactory("SummonRentalManager");
     const safeManager = SummonRentalManager.attach(safeManagerAddress);
@@ -169,11 +231,21 @@ describe("Deploy Safe", function () {
       tokenAddress,
       tokenId)).isIntialized).to.equal(true);
 
-    await safeManager.connect(lender).returnNFT(
-      safeAddress,
-      tokenAddress,
-      tokenId
+    const interace = new ethers.utils.Interface(rentalManagerABI.abi);
+
+    const data = interace.encodeFunctionData(
+      "returnNFT(address,address,uint256)",
+      [safeAddress,tokenAddress,tokenId]
     );
+
+    const transaction: SafeTransactionDataPartial = {
+      to: safeManagerAddress,
+      value: '0',
+      data
+    };
+
+    const daoTx = await safeSdkDao.createTransaction(transaction);
+    await safeSdkDao.executeTransaction(daoTx);
 
     const balance = await boredApeContract.balanceOf(safeSdkDao.getAddress())
     expect(balance).to.equal(BigNumber.from(1))

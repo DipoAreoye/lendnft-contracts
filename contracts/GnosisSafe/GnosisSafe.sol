@@ -173,8 +173,6 @@ contract GnosisSafe is
         {
             uint256 gasUsed = gasleft();
 
-            console.log("safe info");
-            console.log(gasleft());
             // If the gasPrice is 0 we assume that nearly all available gas can be used (it is always more than safeTxGas)
             // We only substract 2500 (compared to the 3000 before) to ensure that the amount passed is still higher than safeTxGas
             success = execute(to, value, data, operation, gasPrice == 0 ? (gasleft() - 2500) : safeTxGas);
@@ -292,9 +290,6 @@ contract GnosisSafe is
                 // If v is 1 then it is an approved hash
                 // When handling approved hashes the address of the approver is encoded into r
                 currentOwner = address(uint160(uint256(r)));
-                console.log("We are here");
-                console.log(currentOwner);
-                console.log(msg.sender);
                 // Hashes are automatically approved by the sender of the message or when they have been pre-approved via a separate transaction
                 require(msg.sender == currentOwner || approvedHashes[currentOwner][dataHash] != 0, "GS025");
             } else if (v > 30) {
