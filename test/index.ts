@@ -130,6 +130,9 @@ describe("Deploy Safe", function () {
 
 
   it("Add Rental", async function () {
+    const SummonRentalManager = await ethers.getContractFactory("SummonRentalManager");
+    const safeManager = SummonRentalManager.attach(safeManagerAddress);
+
     const signatures = generatePreValidatedSignature(safeManagerAddress)
     const bytesString = ethers.utils.hexlify(signatures)
 
@@ -147,7 +150,9 @@ describe("Deploy Safe", function () {
     };
 
     const daoTx = await safeSdkDao.createTransaction(transaction);
-    await safeSdkDao.executeTransaction(daoTx);
+    await expect(safeSdkDao.executeTransaction(daoTx))
+      .to.emit(safeManager, "RentalAdded")
+      .withArgs(safeAddress, tokenAddress, tokenId, daoSafeAddress, borrower.address);
 
     expect(await safeSdkRental.isModuleEnabled(safeManagerAddress)).to.equal(true);
     expect(await safeSdkRental.isOwner(borrower.address)).to.equal(true);
@@ -185,6 +190,9 @@ describe("Deploy Safe", function () {
   });
 
   it("Swap borrower on safe", async function () {
+    const SummonRentalManager = await ethers.getContractFactory("SummonRentalManager");
+    const safeManager = SummonRentalManager.attach(safeManagerAddress);
+
     const owners = await safeSdkRental.getOwners()
 
     const oldOwnerIndex = owners.findIndex((owner: string) =>
@@ -210,7 +218,10 @@ describe("Deploy Safe", function () {
 
 
     const daoTx = await safeSdkDao.createTransaction(transaction);
-    await safeSdkDao.executeTransaction(daoTx);
+    await expect(safeSdkDao.executeTransaction(daoTx))
+      .to.emit(safeManager, "BorrowerChanged")
+      .withArgs(safeAddress, borrower.address, dipo.address);
+
 
     expect(await safeSdkRental.isOwner(dipo.address)).to.equal(true);
     expect(await safeSdkRental.isOwner(borrower.address)).to.equal(false);
@@ -245,7 +256,9 @@ describe("Deploy Safe", function () {
     };
 
     const daoTx = await safeSdkDao.createTransaction(transaction);
-    await safeSdkDao.executeTransaction(daoTx);
+    await expect(safeSdkDao.executeTransaction(daoTx))
+      .to.emit(safeManager, "RentalEnded")
+      // .withArgs(safeAddress, tokenAddress, tokenId, daoSafeAddress, dipo.address);
 
     const balance = await boredApeContract.balanceOf(safeSdkDao.getAddress())
     expect(balance).to.equal(BigNumber.from(1))

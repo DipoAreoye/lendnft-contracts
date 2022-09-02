@@ -16,6 +16,10 @@ contract SummonRentalManager {
   // Safes -> tokenAddress/ID hash -> RentalInfo
   mapping(address => mapping(bytes32 => RentalInfo)) public activeRentals;
 
+  event RentalAdded(address safeAddress, address tokenAddress, uint256 tokenId, address lenderAddress, address borrowerAddress);
+  event RentalEnded(address safeAddress, address tokenAddress, uint256 tokenId, address lenderAddress, address borrowerAddress);
+  event BorrowerChanged(address safeAddress, address oldBorrower, address newBorrower);
+
   struct RentalInfo {
     address borrowerAddress;
     address lenderAddress;
@@ -64,6 +68,8 @@ contract SummonRentalManager {
 
     addOwnerToSafe(safeAddress, msg.sender, 1, signature);
     addOwnerToSafe(safeAddress, borrowerAddress, 3, signature);
+
+    emit RentalAdded(safeAddress, tokenAddress, tokenId, msg.sender, borrowerAddress);
   }
 
   function addOwnerToSafe(
@@ -79,6 +85,81 @@ contract SummonRentalManager {
     );
 
     execTransaction(safeAddress, 0, removeOwnerData, signature);
+  }
+
+  //prevOwner is used by GnosisSafe to point to oldBorrower
+  function swapBorrower(
+    address safeAddress,
+    address tokenAddress,
+    uint256 tokenId,
+    address prevOwner,
+    address oldBorrower,
+    address newBorrower
+  ) public {
+    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
+    RentalInfo memory info = activeRentals[safeAddress][rentalHash];
+
+    // Ensure that the user triggering the swap authorized the rental
+    require(msg.sender == info.lenderAddress, "Sender not authorized");
+
+    bytes memory swapOwnerData = abi.encodeWithSignature(
+      "swapOwner(address,address,address)",
+      prevOwner,
+      oldBorrower,
+      newBorrower
+    );
+
+    GnosisSafe(payable(safeAddress)).execTransactionFromModule(
+      safeAddress,
+      0,
+      swapOwnerData,
+      Enum.Operation.Call
+    );
+
+    emit BorrowerChanged(safeAddress, oldBorrower, newBorrower);
+  }
+
+  function getRentalInfo(
+    address safe,
+    address tokenAddress,
+    uint256 tokenId
+  ) public view returns(RentalInfo memory) {
+    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
+    return activeRentals[safe][rentalHash];
+  }
+
+  function returnNFT(
+    address safeAddress,
+    address tokenAddress,
+    uint256 tokenId
+  ) public {
+    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
+    RentalInfo memory info = activeRentals[safeAddress][rentalHash];
+
+    // Ensure that the user triggering the return is the lender
+    require(msg.sender == info.lenderAddress, "Sender not authorized");
+
+    // Transfer NFT back to lender wallet
+    bytes memory transferData = abi.encodeWithSignature(
+      "safeTransferFrom(address,address,uint256)",
+      safeAddress,
+      info.lenderAddress,
+      tokenId
+    );
+
+    GnosisSafe(payable(safeAddress)).execTransactionFromModule(
+      tokenAddress,
+      0,
+      transferData,
+      Enum.Operation.Call
+    );
+
+    resetSafe(safeAddress, tokenAddress, tokenId);
+
+    // Remove rental entry
+    delete activeRentals[safeAddress][rentalHash];
+
+    emit RentalEnded(safeAddress, tokenAddress, tokenId, info.lenderAddress, info.borrowerAddress);
   }
 
   function resetSafe(
@@ -126,77 +207,6 @@ contract SummonRentalManager {
       removeOwnerData,
       Enum.Operation.Call
     );
-  }
-
-  //prevOwner is used by GnosisSafe to point to oldBorrower
-  function swapBorrower(
-    address safeAddress,
-    address tokenAddress,
-    uint256 tokenId,
-    address prevOwner,
-    address oldBorrower,
-    address newBorrower
-  ) public {
-    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
-    RentalInfo memory info = activeRentals[safeAddress][rentalHash];
-
-    // Ensure that the user triggering the swap authorized the rental
-    require(msg.sender == info.lenderAddress, "Sender not authorized");
-
-    bytes memory swapOwnerData = abi.encodeWithSignature(
-      "swapOwner(address,address,address)",
-      prevOwner,
-      oldBorrower,
-      newBorrower
-    );
-
-    GnosisSafe(payable(safeAddress)).execTransactionFromModule(
-      safeAddress,
-      0,
-      swapOwnerData,
-      Enum.Operation.Call
-    );
-  }
-
-  function returnNFT(
-    address safeAddress,
-    address tokenAddress,
-    uint256 tokenId
-  ) public {
-    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
-    RentalInfo memory info = activeRentals[safeAddress][rentalHash];
-
-    // Ensure that the user triggering the return is the lender
-    require(msg.sender == info.lenderAddress, "Sender not authorized");
-
-    // Transfer NFT back to lender wallet
-    bytes memory transferData = abi.encodeWithSignature(
-      "safeTransferFrom(address,address,uint256)",
-      safeAddress,
-      info.lenderAddress,
-      tokenId
-    );
-
-    GnosisSafe(payable(safeAddress)).execTransactionFromModule(
-      tokenAddress,
-      0,
-      transferData,
-      Enum.Operation.Call
-    );
-
-    resetSafe(safeAddress, tokenAddress, tokenId);
-
-    // Remove rental entry
-    delete activeRentals[safeAddress][rentalHash];
-  }
-
-  function getRentalInfo(
-    address safe,
-    address tokenAddress,
-    uint256 tokenId
-  ) public view returns(RentalInfo memory) {
-    bytes32 rentalHash = genrateRentalHash(tokenAddress, tokenId);
-    return activeRentals[safe][rentalHash];
   }
 
   function genrateRentalHash(
