@@ -78,13 +78,13 @@ contract SummonRentalManager {
     uint256 threshold,
     bytes memory signature
   ) internal {
-    bytes memory removeOwnerData = abi.encodeWithSignature(
+    bytes memory addOwnerData = abi.encodeWithSignature(
       "addOwnerWithThreshold(address,uint256)",
       newOwner,
       threshold
     );
 
-    execTransaction(safeAddress, 0, removeOwnerData, signature);
+    execTransaction(safeAddress, 0, addOwnerData, signature);
   }
 
   //prevOwner is used by GnosisSafe to point to oldBorrower
@@ -182,6 +182,8 @@ contract SummonRentalManager {
     GnosisSafe safe = GnosisSafe(payable(safeAddress));
     address[] memory owners = safe.getOwners();
 
+// We must send the address of the 'prevOwner' that points to owner that we want to
+// remove. 
     address prevOwner;
 
     for (uint256 i = 0; i < owners.length; i++) {
