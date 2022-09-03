@@ -14,7 +14,7 @@ contract SummonRentalManager {
   address internal constant SENTINEL_OWNERS = address(0x1);
 
   // Safes -> tokenAddress/ID hash -> RentalInfo
-  mapping(address => mapping(bytes32 => RentalInfo)) public activeRentals;
+  mapping(address => mapping(bytes32 => RentalInfo)) internal activeRentals;
 
   event RentalAdded(address safeAddress, address tokenAddress, uint256 tokenId, address lenderAddress, address borrowerAddress);
   event RentalEnded(address safeAddress, address tokenAddress, uint256 tokenId, address lenderAddress, address borrowerAddress);
@@ -183,7 +183,7 @@ contract SummonRentalManager {
     address[] memory owners = safe.getOwners();
 
 // We must send the address of the 'prevOwner' that points to owner that we want to
-// remove. 
+// remove.
     address prevOwner;
 
     for (uint256 i = 0; i < owners.length; i++) {
