@@ -225,6 +225,11 @@ describe("Deploy Safe", function () {
 
     expect(await safeSdkRental.isOwner(dipo.address)).to.equal(true);
     expect(await safeSdkRental.isOwner(borrower.address)).to.equal(false);
+
+    expect((await safeManager.getRentalInfo(
+      safeSdkRental.getAddress(),
+      tokenAddress,
+      tokenId)).borrowerAddress).to.equal(dipo.address);
   });
 
   it("Retrieve NFT from safe", async function () {

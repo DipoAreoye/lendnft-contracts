@@ -116,6 +116,12 @@ contract SummonRentalManager {
       Enum.Operation.Call
     );
 
+    activeRentals[safeAddress][rentalHash] = RentalInfo(
+      newBorrower,
+      msg.sender,
+      true
+    );
+
     emit BorrowerChanged(safeAddress, oldBorrower, newBorrower);
   }
 

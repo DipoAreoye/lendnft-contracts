@@ -4,9 +4,6 @@ import Web3 from "web3";
 
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 
-import moduleABI from "../abi/BrentModule.json"
-import guardABI from "../abi/GuardManager.json"
-
 import { BigNumber } from "ethers";
 import Web3Adapter from '@gnosis.pm/safe-web3-lib'
 import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk'
@@ -18,7 +15,9 @@ const settings = {
   maxRetries: 10
 };
 
-const web3 = createAlchemyWeb3("https://eth-mainnet.alchemyapi.io/2gV_Wy-XGkOgONR2q7eJr83iPR23pAsC");
+const ALCHEMY_URL = "https://eth-goerli.g.alchemy.com/v2/7Lj0FoX7MwaZ_tjynkc4pAMGMcaPh8Pu";
+
+const web3 = createAlchemyWeb3(ALCHEMY_URL);
 let alchemy : Alchemy;
 
 function init() {
@@ -49,4 +48,5 @@ async function acceptLend(value: BigNumber, tokenId: BigNumber,
 }
 
 async function retrieveNFT(tokenId: BigNumber) {
+
 }

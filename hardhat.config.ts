@@ -25,7 +25,13 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
-  solidity:{
+  solidity: {
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1
+      },
+    },
     compilers: [
       { version: "0.8.4" },
       { version: "0.6.0" },
@@ -71,6 +77,10 @@ const config: HardhatUserConfig = {
     ethereum: {
       url: process.env.MAINNET_URL,
       accounts: process.env.MAINNET_PRIVATE_KEY != undefined ? [process.env.MAINNET_PRIVATE_KEY] : [],
+    },
+    goerli: {
+      url: process.env.GOERLI_URL,
+      accounts: process.env.GOERLI_PRIVATE_KEY != undefined ? [process.env.GOERLI_PRIVATE_KEY] : [],
     }
   },
   gasReporter: {
