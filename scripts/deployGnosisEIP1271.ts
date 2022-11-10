@@ -7,7 +7,7 @@ import {
 } from "@gnosis.pm/safe-core-sdk";
 
 const localDeployments = {
-  gnosis: "",
+  gnosis: "0x4Ac24ADc4611F57cE6Cb5Ba5dCa89B109C24c589",
   proxyFactory: "",
   multiSend: "",
   fallbackHandler: "",
@@ -20,14 +20,6 @@ async function main() {
   const proxyFactory = await GnosisSafeProxyFactory.deploy();
   await proxyFactory.deployed();
   localDeployments.proxyFactory = proxyFactory.address;
-
-  console.log("attempting to deploy Gnosis safe");
-  const GnosisSafe = await ethers.getContractFactory(
-    "contracts/GnosisSafe/GnosisSafe.sol:GnosisSafe"
-  );
-  const gnosis = await GnosisSafe.deploy();
-  await gnosis.deployed();
-  localDeployments.gnosis = gnosis.address;
 
   const MultiSend = await ethers.getContractFactory(
     "contracts/GnosisSafe/libraries/MultiSend.sol:MultiSend"
@@ -88,7 +80,7 @@ async function deployGnosisSafe() {
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
-main().catch((error) => { 
+main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
