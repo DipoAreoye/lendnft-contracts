@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import { string } from "yargs";
 
 dotenv.config();
 
@@ -74,12 +75,12 @@ const config: HardhatUserConfig = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
-    ethereum: {
-      url: process.env.MAINNET_URL,
-      accounts: process.env.MAINNET_PRIVATE_KEY != undefined ? [process.env.MAINNET_PRIVATE_KEY] : [],
-    },
+    // ethereum: {
+    //   url: process.env.MAINNET_URL,
+    //   accounts: process.env.MAINNET_PRIVATE_KEY != undefined ? [process.env.MAINNET_PRIVATE_KEY] : [],
+    // },
     goerli: {
-      url: process.env.GOERLI_URL,
+      url: "https://eth-goerli.g.alchemy.com/v2/qNtE2MdnnNXNh8G5hjIZ-baxFqFnqvoQ",
       accounts: process.env.GOERLI_PRIVATE_KEY != undefined ? [process.env.GOERLI_PRIVATE_KEY] : [],
     }
   },
@@ -87,9 +88,17 @@ const config: HardhatUserConfig = {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
   },
+  // etherscan: {
+  //   apiKey: process.env.ETHERSCAN_API_KEY,
+  // },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      goerli: 'KW3JT67I7UN9YKZBR2EYCE8PYH21J1AN78'
+    }
   },
+
+
+
   namedAccounts: {
    deployer: {
      default: 0

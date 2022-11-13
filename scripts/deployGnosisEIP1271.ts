@@ -6,19 +6,41 @@ import {
   SafeAccountConfig,
 } from "@gnosis.pm/safe-core-sdk";
 
+
+
+
+// deployed contracts:
+//   gnosis (master): 0x4Ac24ADc4611F57cE6Cb5Ba5dCa89B109C24c589
+//   proxyFactory: 0xA96503b5a9E6071FBCE5e1AdDf64295d78a43f24
+//   multiSend: 0xE215b2C6D42400302810A35Ba6997cb6D43d795D
+//   fallbackHandler: 0xE220806E7F3A60F1612F822197966e88af19A93b
+//   safe: 0x897C500f2196bD04b3f89B22727746c70Dc6b231
+
 const localDeployments = {
-  gnosis: "0x4Ac24ADc4611F57cE6Cb5Ba5dCa89B109C24c589",
+    gnosis: "0x4Ac24ADc4611F57cE6Cb5Ba5dCa89B109C24c589",
+  // gnosis: "0xa0f43C52211DEf09Be4cdEAB5cC0a19E0baBe88a",
   proxyFactory: "",
   multiSend: "",
   fallbackHandler: "",
 };
 
+const path = require('path')
+
 async function main() {
-  const GnosisSafeProxyFactory = await ethers.getContractFactory(
-    "contracts/GnosisSafe/proxies/GnosisSafeProxyFactory.sol:GnosisSafeProxyFactory"
+  const [deployer] = await ethers.getSigners();
+  console.log(deployer);
+  console.log(
+    "Deploying the contracts with the account:",
+    await deployer.getAddress()
+  );
+  
+console.log("line 18")
+const GnosisSafeProxyFactory = await ethers.getContractFactory(
+  "contracts/GnosisSafe/proxies/GnosisSafeProxyFactory.sol:GnosisSafeProxyFactory"
   );
   const proxyFactory = await GnosisSafeProxyFactory.deploy();
   await proxyFactory.deployed();
+
   localDeployments.proxyFactory = proxyFactory.address;
 
   const MultiSend = await ethers.getContractFactory(
@@ -35,7 +57,12 @@ async function main() {
   await fallbackHandler.deployed();
   localDeployments.fallbackHandler = fallbackHandler.address;
 
-  console.log(`deployed contracts ${localDeployments}`);
+  console.log(`deployed contracts:
+  gnosis: ${localDeployments.gnosis}
+  proxyFactory: ${localDeployments.proxyFactory}
+  multiSend: ${localDeployments.multiSend}
+  fallbackHandler: ${localDeployments.fallbackHandler}
+  `);
   deployGnosisSafe();
 }
 
@@ -54,7 +81,7 @@ async function deployGnosisSafe() {
   const contractNetworks: ContractNetworksConfig = {
     [chainId]: {
       multiSendAddress: localDeployments.multiSend,
-      safeMasterCopyAddress: localDeployments.gnosis,
+      safeMasterCopyAddress: localDeployments.gnosis, // <--- singleton
       safeProxyFactoryAddress: localDeployments.proxyFactory,
     },
   };
@@ -64,7 +91,8 @@ async function deployGnosisSafe() {
     contractNetworks,
   });
 
-  const owners = ["0x812eb89130a071ce95499cc8f6e951de3a742f06"];
+  // const owners = ["0x812eb89130a071ce95499cc8f6e951de3a742f06"];
+  const owners = ["0x1c7e51D7481fb83249C4e60d87ed4C937A23cD37"]; //brent's public key
   const threshold = 1;
   const safeAccountConfig: SafeAccountConfig = {
     owners,
