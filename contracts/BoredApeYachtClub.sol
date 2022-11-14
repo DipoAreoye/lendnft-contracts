@@ -1897,19 +1897,20 @@ contract BoredApeYachtClub is ERC721, Ownable {
 
     uint256 public startingIndex;
 
-    uint256 public constant apePrice = 80000000000000000; //0.08 ETH
+    uint256 public constant apePrice = 1000000000000000; //0.001 ETH
 
     uint public constant maxApePurchase = 20;
 
-    uint256 public MAX_APES;
+    uint256 public MAX_APES = 20;
 
     bool public saleIsActive = true;
 
     uint256 public REVEAL_TIMESTAMP;
 
-    constructor(string memory name, string memory symbol, uint256 maxNftSupply, uint256 saleStart) ERC721(name, symbol) {
-        MAX_APES = maxNftSupply;
-        REVEAL_TIMESTAMP = saleStart + (86400 * 9);
+    constructor(/* uint256 maxNftSupply, uint256 saleStart*/) ERC721("BoredApe", "BAYC") {
+        // MAX_APES = maxNftSupply;
+        // REVEAL_TIMESTAMP = saleStart + (86400 * 9);
+        REVEAL_TIMESTAMP = block.timestamp + 100;
     }
 
     function withdraw() public onlyOwner {
