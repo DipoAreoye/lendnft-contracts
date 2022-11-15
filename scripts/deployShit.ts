@@ -32,14 +32,19 @@ const path = require('path')
 async function main() {
 
 const [deployer1, deployer2] = await ethers.getSigners();
+const dep1Address = await deployer1.getAddress()
+const dep2Address = await deployer2.getAddress()
+
+
+
 console.log(deployer1);
 console.log(
   "Deploying the contracts with the account:",
-  await deployer1.getAddress()
+  await dep1Address
 );
 console.log(
   "secondary account:",
-  await deployer2.getAddress()
+  await dep2Address
 );
 
 // DEPLOY BAYC CONTRACT
@@ -52,9 +57,9 @@ await Bayc.deployed();
 console.log(`NFT's deployed at ${Bayc.address}`)
 
 // MINT NFT FROM deployer 2
-let baycTwo = Bayc.connect(deployer2) // connecting bayc with second signer
+const Bayc_Dep2 = Bayc.connect(deployer2) // connecting bayc with second signer
 
-let minted = await baycTwo.mintApe(1, {value: "1000000000000000"})
+let minted = await Bayc_Dep2.mintApe(1, {value: "1000000000000000"})
 const receipt = await minted.wait(1)
 console.log(receipt.status)
 
@@ -69,7 +74,19 @@ await Summon.deployed()
 
 console.log(`Summon contract deployed at ${Summon.address}`)
 
+// TEST: can dep2 call setApprovalForAll and then can dep1 transfer the NFT?
+
+let tx = await Bayc_Dep2.setApprovalForAll(dep1Address, true)
+let tx_r = await tx.wait()
+console.log(`setApprovalForAll status is ${tx_r.status}`)
+
+const Bayc_Dep1 = Bayc.connect(deployer1)
+tx = await Bayc_Dep1.transferFrom(dep2Address, dep1Address, 0)
+tx_r = await tx.wait()
+console.log(`transferFrom status is: ${tx_r.status}`)
+
 // dep2 calls setApprovalForAll, approving the summon contract as an operator
+
 
 
 
