@@ -41,7 +41,7 @@ const Bayc_Dep2 = Bayc.connect(deployer2) // connecting bayc with second signer
 
 let minted = await Bayc_Dep2.mintApe(1, {value: "1000000000000000"})
 const receipt = await minted.wait(1)
-console.log(`dep 2 minted ${receipt.status}`)
+console.log(`dep 2 minted status: ${receipt.status}`)
 
 
 // dep1 deploys Summon contract
@@ -49,7 +49,7 @@ console.log(`dep 2 minted ${receipt.status}`)
 const SummonFactory = await ethers.getContractFactory(
   "contracts/Summon.sol:Summon"
 )
-const Summon = await SummonFactory.deploy()
+const Summon = await SummonFactory.deploy() // msg.sender is dep1
 await Summon.deployed()
 
 console.log(`Summon contract deployed at ${Summon.address}`)
@@ -79,11 +79,13 @@ console.log(`setApprovalForAll to summon address status is ${tx_r.status}`)
 const Summon_Dep2 = Summon.connect(deployer2) // connecting bayc with second signer
 tx = await Summon_Dep2.depositToken(Bayc.address, 0)
 tx_r = await tx.wait()
-console.log(`deposit TokenStatus is status is: ${tx_r.status}`)
+console.log(`depositToken status is status is: ${tx_r.status}`)
 
+// dep2 calls withdrawToken
 
-
-
+// tx = await Summon_Dep2.withdrawToken(Bayc.address, 0)
+// tx_r = await tx.wait()
+// console.log(`withdrawToken status is status is: ${tx_r.status}`)
 
 // test for sending an NFT from deployer 2 to deployer 1 using a low level call
   // let IBayc = bayc.interface
