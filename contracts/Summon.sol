@@ -20,8 +20,9 @@ contract Summon is SummonUtils {
         bytes memory uniqToken = abi.encodePacked(tokenAddress, tokenId);
         storedTokens[uniqToken] = msg.sender;
 
-        (success, data) = tokenAddress.delegatecall(abi.encodeWithSignature("transferFrom(address,address,uint256)",msg.sender,address(this),tokenId));
-        return (success, data);
+        (success, data) = tokenAddress.call(abi.encodeWithSignature("transferFrom(address,address,uint256)",msg.sender,address(this),tokenId));
+        require(success, "delegate call failed");
+        // return (success, data);
     }
     
 

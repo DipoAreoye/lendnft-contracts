@@ -9,7 +9,7 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { string } from "yargs";
 
-dotenv.config();
+dotenv.config({path: '~/.zshrc'});
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -81,7 +81,8 @@ const config: HardhatUserConfig = {
     // },
     goerli: {
       url: "https://eth-goerli.g.alchemy.com/v2/qNtE2MdnnNXNh8G5hjIZ-baxFqFnqvoQ",
-      accounts: process.env.GOERLI_PRIVATE_KEY != undefined ? [process.env.GOERLI_PRIVATE_KEY] : [],
+      // accounts: process.env.DEV_PRIVATE_KEY != undefined ? [process.env.DEV_PRIVATE_KEY] : [],
+      accounts: (process.env.DEV_PRIVATE_KEY && process.env.DEV_PRIVATE_KEY_2) ? [process.env.DEV_PRIVATE_KEY, process.env.DEV_PRIVATE_KEY_2] : []
     }
   },
   gasReporter: {

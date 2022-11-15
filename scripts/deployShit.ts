@@ -1,39 +1,19 @@
-// import { ethers } from "hardhat";
-
-// const path = require('path')
-
-// // address _target, address _tokenAddress, address _lenderAddress, uint256 _tokenId
-// // safeAddress, tokenAddress, lenderAddress, tokenID
-// const args = ['0x41Ffd70EDFF983AB1D48911884dbFB57986601C6', '0xf5de760f2e916647fd766B4AD9E85ff943cE3A2b', '0xaDAe8CDc7C2Da113E48447193a2db0c139aaA297' , 2316172]
-
-// async function main() {
-// const Module = await ethers.getContractFactory(
-//   "contracts/BrentModule.sol:BrentModule"
-//   );
-//   const brentModule = await Module.deploy(...args);
-//   await brentModule.deployed();
-  
-//   console.log(`module deployed at ${brentModule.address}`)
-
-
-// }
-//   main().catch((error) => {
-//     console.error(error);
-//     process.exitCode = 1;
-//   });
 
 
 
 import { ethers } from "hardhat";
+
+
+
 
 const path = require('path')
 
 
 async function main() {
 
-const [deployer1, deployer2] = await ethers.getSigners();
-const dep1Address = await deployer1.getAddress()
-const dep2Address = await deployer2.getAddress()
+  const [deployer1, deployer2] = await ethers.getSigners()
+  const dep1Address = await deployer1.getAddress()
+  const dep2Address = await deployer2.getAddress()
 
 
 
@@ -61,7 +41,7 @@ const Bayc_Dep2 = Bayc.connect(deployer2) // connecting bayc with second signer
 
 let minted = await Bayc_Dep2.mintApe(1, {value: "1000000000000000"})
 const receipt = await minted.wait(1)
-console.log(receipt.status)
+console.log(`dep 2 minted ${receipt.status}`)
 
 
 // dep1 deploys Summon contract
@@ -74,24 +54,32 @@ await Summon.deployed()
 
 console.log(`Summon contract deployed at ${Summon.address}`)
 
-// TEST: can dep2 call setApprovalForAll and then can dep1 transfer the NFT?
+// // TEST: can dep2 call setApprovalForAll and then can dep1 transfer the NFT?
 
-let tx = await Bayc_Dep2.setApprovalForAll(dep1Address, true)
-let tx_r = await tx.wait()
-console.log(`setApprovalForAll status is ${tx_r.status}`)
+// let tx = await Bayc_Dep2.setApprovalForAll(dep1Address, true)
+// let tx_r = await tx.wait()
+// console.log(`setApprovalForAll status is ${tx_r.status}`)
 
-const Bayc_Dep1 = Bayc.connect(deployer1)
-tx = await Bayc_Dep1.transferFrom(dep2Address, dep1Address, 0)
-tx_r = await tx.wait()
-console.log(`transferFrom status is: ${tx_r.status}`)
+// const Bayc_Dep1 = Bayc.connect(deployer1)
+// tx = await Bayc_Dep1.transferFrom(dep2Address, dep1Address, 0)
+// tx_r = await tx.wait()
+// console.log(`transferFrom status is: ${tx_r.status}`)
 
 // dep2 calls setApprovalForAll, approving the summon contract as an operator
+
+let tx = await Bayc_Dep2.setApprovalForAll(Summon.address, true)
+let tx_r = await tx.wait()
+console.log(`setApprovalForAll to summon address status is ${tx_r.status}`)
 
 
 
 
 // dep2 calls depositToken function on Summon contract
 
+const Summon_Dep2 = Summon.connect(deployer2) // connecting bayc with second signer
+tx = await Summon_Dep2.depositToken(Bayc.address, 0)
+tx_r = await tx.wait()
+console.log(`deposit TokenStatus is status is: ${tx_r.status}`)
 
 
 
