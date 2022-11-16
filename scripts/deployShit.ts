@@ -49,7 +49,7 @@ console.log(`dep 2 minted status: ${receipt.status}`)
 const SummonFactory = await ethers.getContractFactory(
   "contracts/Summon.sol:Summon"
 )
-const Summon = await SummonFactory.deploy() // msg.sender is dep1
+const Summon = await SummonFactory.deploy('0x1c7e51D7481fb83249C4e60d87ed4C937A23cD37') // msg.sender is dep1
 await Summon.deployed()
 
 console.log(`Summon contract deployed at ${Summon.address}`)

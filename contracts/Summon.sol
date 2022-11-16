@@ -7,9 +7,8 @@ contract Summon is SummonUtils {
     address public immutable owner;
     mapping(bytes => address) public storedTokens; // lender => (contract,tokenID) 
 
-    constructor() {
-        owner = msg.sender;
-
+    constructor(address _owner) {
+        owner = _owner;
     }
 
     
