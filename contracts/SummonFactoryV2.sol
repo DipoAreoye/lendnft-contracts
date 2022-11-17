@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./SummonV2.sol";
 
-contract SummonFactory {
+contract SummonFactoryV2 {
   event SummonCreated(address owner, address summonAddress);
   mapping(address => address) public OwnerToSummonAddress;
   mapping(address => address) public SummonAddressToOwner;
@@ -19,10 +19,14 @@ contract SummonFactory {
     emit SummonCreated(_owner, address(summon));
   }
 
+  // function getEncodedToken(address tokenAddress, uint tokenId) public view returns(bytes memory encodedToken) {
+  //   return abi.encodePacked(tokenAddress)
+  // }
+
+
   // to be called by lender
    function depositTokenToSummon(address _summon, address tokenAddress, uint256 tokenId) public returns(bool success, bytes memory data) {
     require(SummonAddressToOwner[_summon] != address(0), "no summon found");
-
     bytes memory encodedToken = abi.encodePacked(tokenAddress, tokenId);
     
     // do state changes that say this summon has this token
@@ -37,10 +41,14 @@ contract SummonFactory {
   // to be called by lender
    function withdrawTokenFromSummon(address tokenAddress, uint tokenId) public returns(bool success, bytes memory data) {
     bytes memory _encodedToken = abi.encodePacked(tokenAddress, tokenId);
-
+    EncodedTokenToSummon[_encodedToken] = address(0);
+    EncodedTokenToLender[_encodedToken] = address(0);
     (success, data) = Summon(address(EncodedTokenToSummon[_encodedToken])).safeWithdraw(tokenAddress, tokenId, msg.sender);
     require(success, "call failed");
    }
+
+
+
 }
 
 // previously the summon contract itself managed everything, but howwould things changed if the summon factory manged everything?
