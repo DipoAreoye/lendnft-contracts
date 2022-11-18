@@ -4,14 +4,25 @@ pragma solidity ^0.8.0;
 import './SummonUtils.sol';
 
 contract Summon is SummonUtils {
-  address public immutable owner;
-  address public immutable SummonFactory;
+  address public owner;
+  address public SummonFactory;
   // mapping(bytes => address) public storedTokens; // lender => (contract,tokenID) 
 
-  constructor(address _owner ) {
-      owner = _owner;
-      SummonFactory = msg.sender;
-  }
+  // constructor(address _owner ) {
+  //     owner = _owner;
+  //     SummonFactory = msg.sender;
+  // }
+
+
+
+function init(address _owner) external {
+    require(owner == address(0) && SummonFactory == address(0));
+    owner = _owner;
+    SummonFactory = msg.sender;
+}
+
+
+
 
   function safeWithdraw(address tokenAddress, uint256 tokenId, address lender) public returns(bool success, bytes memory data) {
     (success, data) = tokenAddress.call(abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",address(this),lender,tokenId));

@@ -1,40 +1,56 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./SummonV2.sol";
 
-contract SummonFactoryV2 {
+contract SummonV2Manager {
   event SummonCreated(address owner, address summonAddress);
+  event TokenLendedFrom(address lender, address summon, address tokenAddress, uint tokenId );
+  event TokenWithdrawnTo(address lender, address summon, address tokenAddress, uint tokenId );
+  // event TokenDeposit(address _summon, address tokenAddress, )
   mapping(address => address) public OwnerToSummonAddress;
   mapping(address => address) public SummonAddressToOwner;
   mapping(bytes => address) public EncodedTokenToSummon; // map from token => summon
   mapping(bytes => address) public EncodedTokenToLender; // map from token => lender
+  address public immutable singleton;
 
+  constructor(address _singleton) {
+    singleton = _singleton;
+  }
 
-  function CreateNewSummon(address _owner) public {
+  function CreateNewSummon(address _owner) public returns(address) {
     require(OwnerToSummonAddress[_owner] == address(0), "address already has a Summon");
-    Summon summon = new Summon(_owner);
+
+    address summon = Clones.clone(singleton);
+    Summon(summon).init(_owner);
+
+
+
     OwnerToSummonAddress[_owner] = address(summon);
     SummonAddressToOwner[address(summon)] = _owner;
     emit SummonCreated(_owner, address(summon));
+
+    return summon;
   }
 
-  // function getEncodedToken(address tokenAddress, uint tokenId) public view returns(bytes memory encodedToken) {
-  //   return abi.encodePacked(tokenAddress)
-  // }
+  function getEncodedToken(address tokenAddress, uint tokenId) public pure returns(bytes memory encodedToken) {
+    return abi.encodePacked(tokenAddress, tokenId);
+  }
 
 
   // to be called by lender
-   function depositTokenToSummon(address _summon, address tokenAddress, uint256 tokenId) public returns(bool success, bytes memory data) {
-    require(SummonAddressToOwner[_summon] != address(0), "no summon found");
+   function depositTokenToSummon(address summon, address tokenAddress, uint256 tokenId) public returns(bool success, bytes memory data) {
+    require(SummonAddressToOwner[summon] != address(0), "no summon found");
     bytes memory encodedToken = abi.encodePacked(tokenAddress, tokenId);
     
     // do state changes that say this summon has this token
-    EncodedTokenToSummon[encodedToken] = _summon;
+    EncodedTokenToSummon[encodedToken] = summon;
     EncodedTokenToLender[encodedToken] = msg.sender;
 
     // move token to that summon
-    (success, data) = tokenAddress.call(abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",address(msg.sender),_summon,tokenId));
+    (success, data) = tokenAddress.call(abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",address(msg.sender),summon,tokenId));
+    emit TokenLendedFrom(address(msg.sender), summon, tokenAddress, tokenId);
     require(success, "call failed");
    }
 
@@ -44,6 +60,7 @@ contract SummonFactoryV2 {
     EncodedTokenToSummon[_encodedToken] = address(0);
     EncodedTokenToLender[_encodedToken] = address(0);
     (success, data) = Summon(address(EncodedTokenToSummon[_encodedToken])).safeWithdraw(tokenAddress, tokenId, msg.sender);
+    emit TokenWithdrawnTo(address(msg.sender), address(EncodedTokenToSummon[_encodedToken]), tokenAddress, tokenId);
     require(success, "call failed");
    }
 
