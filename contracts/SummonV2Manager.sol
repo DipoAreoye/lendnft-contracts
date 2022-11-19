@@ -6,8 +6,8 @@ import "./SummonV2.sol";
 
 contract SummonV2Manager {
   event SummonCreated(address indexed owner, address indexed summonAddress);
-  event TokenLendedFrom(address indexed lender, address summon, address indexed tokenAddress, uint indexed tokenId );
-  event TokenWithdrawnTo(address indexed lender, address summon, address indexed tokenAddress, uint indexed tokenId );
+  event TokenLendedFrom(address indexed lender, address summon, bytes indexed encodedToken);
+  event TokenWithdrawnTo(address indexed lender, address summon, bytes indexed encodedToken );
   // event TokenDeposit(address _summon, address tokenAddress, )
   mapping(address => address) public OwnerToSummonAddress;
   mapping(address => address) public SummonAddressToOwner;
@@ -35,14 +35,22 @@ contract SummonV2Manager {
   }
 
   function getEncodedToken(address tokenAddress, uint tokenId) public pure returns(bytes memory encodedToken) {
-    return abi.encodePacked(tokenAddress, tokenId);
+    return abi.encode(tokenAddress, tokenId);
   }
+
+
+  function getDecodedToken(bytes calldata _encodedToken) public pure returns(address tokenAddress, uint tokenId) {
+    (tokenAddress, tokenId) = abi.decode(_encodedToken, (address, uint));
+    return (tokenAddress, tokenId);
+  }
+
+
 
 
   // to be called by lender
    function depositTokenToSummon(address summon, address tokenAddress, uint256 tokenId) public returns(bool success, bytes memory data) {
     require(SummonAddressToOwner[summon] != address(0), "no summon found");
-    bytes memory encodedToken = abi.encodePacked(tokenAddress, tokenId);
+    bytes memory encodedToken = abi.encode(tokenAddress, tokenId);
     
     // do state changes that say this summon has this token
     EncodedTokenToSummon[encodedToken] = summon;
@@ -50,13 +58,13 @@ contract SummonV2Manager {
 
     // move token to that summon
     (success, data) = tokenAddress.call(abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",address(msg.sender),summon,tokenId));
-    emit TokenLendedFrom(address(msg.sender), summon, tokenAddress, tokenId);
+    emit TokenLendedFrom(address(msg.sender), summon, abi.encode(tokenAddress, tokenId));
     require(success, "call failed");
    }
 
   // to be called by lender
    function withdrawTokenFromSummon(address tokenAddress, uint tokenId) public returns(bool success, bytes memory data) {
-    bytes memory _encodedToken = abi.encodePacked(tokenAddress, tokenId);
+    bytes memory _encodedToken = abi.encode(tokenAddress, tokenId);
     address summonAddress = EncodedTokenToSummon[_encodedToken];
     require(EncodedTokenToLender[_encodedToken] == msg.sender, "caller must be lender");
 
@@ -65,7 +73,7 @@ contract SummonV2Manager {
 
     (success, data) = Summon(summonAddress).safeWithdraw(tokenAddress, tokenId, msg.sender);
     
-    emit TokenWithdrawnTo(address(msg.sender), summonAddress, tokenAddress, tokenId);
+    emit TokenWithdrawnTo(address(msg.sender), summonAddress, abi.encode(tokenAddress, tokenId));
     require(success, "calls call failed");
    }
 
