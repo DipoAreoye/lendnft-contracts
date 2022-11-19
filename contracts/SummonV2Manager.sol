@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./SummonV2.sol";
 
 contract SummonV2Manager {
-  event SummonCreated(address owner, address summonAddress);
-  event TokenLendedFrom(address lender, address summon, address tokenAddress, uint tokenId );
-  event TokenWithdrawnTo(address lender, address summon, address tokenAddress, uint tokenId );
+  event SummonCreated(address indexed owner, address indexed summonAddress);
+  event TokenLendedFrom(address indexed lender, address summon, address indexed tokenAddress, uint indexed tokenId );
+  event TokenWithdrawnTo(address indexed lender, address summon, address indexed tokenAddress, uint indexed tokenId );
   // event TokenDeposit(address _summon, address tokenAddress, )
   mapping(address => address) public OwnerToSummonAddress;
   mapping(address => address) public SummonAddressToOwner;
@@ -57,11 +57,16 @@ contract SummonV2Manager {
   // to be called by lender
    function withdrawTokenFromSummon(address tokenAddress, uint tokenId) public returns(bool success, bytes memory data) {
     bytes memory _encodedToken = abi.encodePacked(tokenAddress, tokenId);
+    address summonAddress = EncodedTokenToSummon[_encodedToken];
+    require(EncodedTokenToLender[_encodedToken] == msg.sender, "caller must be lender");
+
     EncodedTokenToSummon[_encodedToken] = address(0);
     EncodedTokenToLender[_encodedToken] = address(0);
-    (success, data) = Summon(address(EncodedTokenToSummon[_encodedToken])).safeWithdraw(tokenAddress, tokenId, msg.sender);
-    emit TokenWithdrawnTo(address(msg.sender), address(EncodedTokenToSummon[_encodedToken]), tokenAddress, tokenId);
-    require(success, "call failed");
+
+    (success, data) = Summon(summonAddress).safeWithdraw(tokenAddress, tokenId, msg.sender);
+    
+    emit TokenWithdrawnTo(address(msg.sender), summonAddress, tokenAddress, tokenId);
+    require(success, "calls call failed");
    }
 
 

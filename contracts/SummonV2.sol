@@ -5,7 +5,7 @@ import './SummonUtils.sol';
 
 contract Summon is SummonUtils {
   address public owner;
-  address public SummonFactory;
+  address public SummonManager;
   // mapping(bytes => address) public storedTokens; // lender => (contract,tokenID) 
 
   // constructor(address _owner ) {
@@ -16,15 +16,16 @@ contract Summon is SummonUtils {
 
 
 function init(address _owner) external {
-    require(owner == address(0) && SummonFactory == address(0));
+    require(owner == address(0) && SummonManager == address(0));
     owner = _owner;
-    SummonFactory = msg.sender;
+    SummonManager = msg.sender;
 }
 
 
 
 
   function safeWithdraw(address tokenAddress, uint256 tokenId, address lender) public returns(bool success, bytes memory data) {
+    require(msg.sender == SummonManager, "can only be called by Summon Manager");
     (success, data) = tokenAddress.call(abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",address(this),lender,tokenId));
     require(success, "call failed");
   }
