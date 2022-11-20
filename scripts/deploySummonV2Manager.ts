@@ -36,6 +36,7 @@ console.log(`Singleton deployed at ${SummonV2.address}`)
 const SummonManagerFactory = await ethers.getContractFactory(
 "contracts/SummonV2Manager.sol:SummonV2Manager"
 );
+
 const SummonV2Manager = await SummonManagerFactory.deploy(SummonV2.address); // summon V2 address as in the constructor
 await SummonV2Manager.deployed();
 
@@ -43,6 +44,7 @@ console.log(`Summon V2 Manager deployed at ${SummonV2Manager.address}`)
 
 const SummonManager_dep2 = SummonV2Manager.connect(deployer2)
 let tx = await SummonManager_dep2.CreateNewSummon(dep1Address)
+console.log(`creating new summon, tx hash: ${tx.hash}`)
 let tx_r = tx.wait()
 let r = await tx_r
 let [owner, summonAddress] = r.events[0].args

@@ -6,8 +6,8 @@ import "./SummonV2.sol";
 
 contract SummonV2Manager {
   event SummonCreated(address indexed owner, address indexed summonAddress);
-  event TokenLendedFrom(address indexed lender, address summon, bytes indexed encodedToken);
-  event TokenWithdrawnTo(address indexed lender, address summon, bytes indexed encodedToken );
+  event TokenLendedFrom(address indexed lender, address summon, address indexed tokenAddress, uint indexed tokenId);
+  event TokenWithdrawnTo(address indexed lender, address summon, address indexed tokenAddress, uint indexed tokenId);
   // event TokenDeposit(address _summon, address tokenAddress, )
   mapping(address => address) public OwnerToSummonAddress;
   mapping(address => address) public SummonAddressToOwner;
@@ -58,7 +58,7 @@ contract SummonV2Manager {
 
     // move token to that summon
     (success, data) = tokenAddress.call(abi.encodeWithSignature("safeTransferFrom(address,address,uint256)",address(msg.sender),summon,tokenId));
-    emit TokenLendedFrom(address(msg.sender), summon, abi.encode(tokenAddress, tokenId));
+    emit TokenLendedFrom(address(msg.sender), summon, tokenAddress, tokenId);
     require(success, "call failed");
    }
 
@@ -73,7 +73,7 @@ contract SummonV2Manager {
 
     (success, data) = Summon(summonAddress).safeWithdraw(tokenAddress, tokenId, msg.sender);
     
-    emit TokenWithdrawnTo(address(msg.sender), summonAddress, abi.encode(tokenAddress, tokenId));
+    emit TokenWithdrawnTo(address(msg.sender), summonAddress, tokenAddress, tokenId);
     require(success, "calls call failed");
    }
 
